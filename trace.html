@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>trace</title>
+  <style>
+    :root { --sz: 422px; }
+    @media (min-width: 1440px) { :root { --sz: 576px; } }
+    @media (max-width: 480px)  { :root { --sz: 322px; } }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%; background: #000;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden; font-family: system-ui, sans-serif; cursor: none;
+    }
+    #wrap { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+    canvas {
+      width: var(--sz); height: var(--sz);
+      border-radius: 10px; border: 1px solid rgba(255,255,255,0.06); display: block;
+    }
+    #meta { display: flex; align-items: center; gap: 24px; }
+    #label { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255,255,255,0.2); }
+    #back  { font-size: 10px; letter-spacing: 0.1em; color: rgba(255,255,255,0.15); text-decoration: none; transition: color 0.15s; }
+    #back:hover { color: rgba(255,255,255,0.4); }
+  </style>
+</head>
+<body>
+  <div id="wrap">
+    <canvas id="c"></canvas>
+    <div id="meta">
+      <a href="index.html" id="back">← lab</a>
+      <span id="label">trace — move to draw, click to clear</span>
+    </div>
+  </div>
+<script>
+  const SZ = 422;
+  const canvas = document.getElementById('c');
+  canvas.width = canvas.height = SZ;
+  const ctx = canvas.getContext('2d');
+
+  // Off-screen canvas holds the persistent trace (fades over time)
+  const off = document.createElement('canvas');
+  off.width = off.height = SZ;
+  const octx = off.getContext('2d');
+
+  // Each segment: { x1, y1, x2, y2, age, speed }
+  const segments = [];
+  const MAX_AGE = 3.5; // seconds until fully invisible
+
+  let mx = SZ / 2, my = SZ / 2;
+  let prevX = null, prevY = null;
+  let isInside = false;
+  let speed = 0;
+  let lastMoveTime = 0;
+
+  canvas.addEventListener('mouseenter', e => {
+    isInside = true;
+    const r = canvas.getBoundingClientRect();
+    prevX = (e.clientX - r.left) * (SZ / r.width);
+    prevY = (e.clientY - r.top)  * (SZ / r.height);
+  });
+  canvas.addEventListener('mouseleave', () => {
+    isInside = false;
+    prevX = null; prevY = null;
+  });
+  canvas.addEventListener('mousemove', e => {
+    const r = canvas.getBoundingClientRect();
+    const nx = (e.clientX - r.left) * (SZ / r.width);
+    const ny = (e.clientY - r.top)  * (SZ / r.height);
+
+    const dx = nx - mx, dy = ny - my;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    speed = dist;
+
+    if (prevX !== null && dist > 0.5) {
+      segments.push({ x1: prevX, y1: prevY, x2: nx, y2: ny, age: 0, speed });
+      maybeTick(e.clientX, e.clientY, dist);
+    }
+
+    mx = nx; my = ny;
+    prevX = nx; prevY = ny;
+    lastMoveTime = performance.now();
+  });
+
+  canvas.addEventListener('pointerdown', () => {
+    segments.length = 0;
+    octx.clearRect(0, 0, SZ, SZ);
+    playClick();
+  });
+
+  // ── Audio ─────────────────────────────────────────────────────
+  let AC;
+  function ac() {
+    if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+    if (AC.state === 'suspended') AC.resume();
+    return AC;
+  }
+
+  let lastTickT = 0, lastTickPos = { x: 0, y: 0 };
+  function maybeTick(x, y, dist) {
+    if (dist < 14) return;
+    try {
+      const a = ac(), t = a.currentTime;
+      if (t - lastTickT < 0.028) return;
+      lastTickT = t;
+      // Pen scratch — breathy high noise burst
+      const buf  = a.createBuffer(1, Math.floor(a.sampleRate * 0.025), a.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+      const src = a.createBufferSource(); src.buffer = buf;
+      const flt = a.createBiquadFilter(); flt.type = 'highpass'; flt.frequency.value = 3000;
+      const g   = a.createGain();
+      const vol = Math.min(0.012 + dist * 0.0015, 0.055);
+      g.gain.setValueAtTime(vol, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
+      src.connect(flt); flt.connect(g); g.connect(a.destination); src.start(t);
+    } catch (_) {}
+  }
+
+  function playClick() {
+    try {
+      const a = ac(), t = a.currentTime;
+      // Paper clear — soft low whoosh
+      const buf  = a.createBuffer(1, Math.floor(a.sampleRate * 0.18), a.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (data.length * 0.4));
+      const src = a.createBufferSource(); src.buffer = buf;
+      const flt = a.createBiquadFilter(); flt.type = 'bandpass'; flt.frequency.value = 600; flt.Q.value = 0.8;
+      const g   = a.createGain(); g.gain.setValueAtTime(0.12, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+      src.connect(flt); flt.connect(g); g.connect(a.destination); src.start(t);
+    } catch (_) {}
+  }
+
+  // ── Draw ─────────────────────────────────────────────────────
+  let last = performance.now();
+
+  function draw() {
+    const now = performance.now();
+    const dt  = Math.min((now - last) / 1000, 0.05);
+    last = now;
+
+    // Age all segments
+    for (let i = segments.length - 1; i >= 0; i--) {
+      segments[i].age += dt;
+      if (segments[i].age > MAX_AGE) segments.splice(i, 1);
+    }
+
+    // Black background
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, SZ, SZ);
+
+    // Draw all segments with age-based alpha
+    segments.forEach(seg => {
+      const t = seg.age / MAX_AGE;
+      // Exponential fade — stays bright for a while then drops fast
+      const alpha = Math.pow(1 - t, 2.2) * 0.72;
+      const width = 1.0 + Math.min(seg.speed * 0.04, 0.6);
+
+      ctx.beginPath();
+      ctx.moveTo(seg.x1, seg.y1);
+      ctx.lineTo(seg.x2, seg.y2);
+      ctx.strokeStyle = `rgba(255,255,255,${alpha.toFixed(4)})`;
+      ctx.lineWidth   = width;
+      ctx.lineCap     = 'round';
+      ctx.stroke();
+    });
+
+    // Cursor dot
+    if (isInside) {
+      ctx.beginPath();
+      ctx.arc(mx, my, 1.5, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.fill();
+    }
+
+    // Idle hint — faint crosshair when nothing drawn
+    if (segments.length === 0 && !isInside) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+      ctx.lineWidth   = 1;
+      ctx.beginPath(); ctx.moveTo(SZ/2, SZ/2 - 12); ctx.lineTo(SZ/2, SZ/2 + 12); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(SZ/2 - 12, SZ/2); ctx.lineTo(SZ/2 + 12, SZ/2); ctx.stroke();
+    }
+
+    requestAnimationFrame(draw);
+  }
+
+  draw();
+</script>
+</body>
+</html>

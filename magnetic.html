@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>magnetic</title>
+  <style>
+    :root { --sz: 422px; }
+    @media (min-width: 1440px) { :root { --sz: 576px; } }
+    @media (max-width: 480px)  { :root { --sz: 322px; } }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%; background: #000;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden; font-family: system-ui, sans-serif; cursor: none;
+    }
+    #wrap { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+    canvas {
+      width: var(--sz); height: var(--sz);
+      border-radius: 10px; border: 1px solid rgba(255,255,255,0.06); display: block;
+    }
+    #meta { display: flex; align-items: center; gap: 24px; }
+    #label { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255,255,255,0.2); }
+    #back  { font-size: 10px; letter-spacing: 0.1em; color: rgba(255,255,255,0.15); text-decoration: none; transition: color 0.15s; }
+    #back:hover { color: rgba(255,255,255,0.4); }
+  </style>
+</head>
+<body>
+  <div id="wrap">
+    <canvas id="c"></canvas>
+    <div id="meta">
+      <a href="index.html" id="back">← lab</a>
+      <span id="label">magnetic — move + click</span>
+    </div>
+  </div>
+<script>
+  const SZ   = 422;
+  const COLS = 22, ROWS = 22;
+  const GAP  = SZ / COLS;
+  const DOT  = 1.8;
+  const REPEL_R   = 72;
+  const REPEL_STR = 5.2;
+  const SPRING    = 0.14;
+  const DAMP      = 0.72;
+
+  const canvas = document.getElementById('c');
+  canvas.width = canvas.height = SZ;
+  const ctx = canvas.getContext('2d');
+
+  const dots = [];
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const ox = (c + 0.5) * GAP;
+      const oy = (r + 0.5) * GAP;
+      dots.push({ ox, oy, x: ox, y: oy, vx: 0, vy: 0 });
+    }
+  }
+
+  let mx = SZ / 2, my = SZ / 2, isInside = false;
+  let clickX = -999, clickY = -999, clickAge = 9;
+
+  canvas.addEventListener('mousemove', e => {
+    const r = canvas.getBoundingClientRect();
+    mx = (e.clientX - r.left) * (SZ / r.width);
+    my = (e.clientY - r.top)  * (SZ / r.height);
+    isInside = true;
+    maybeTick(e.clientX, e.clientY);
+  });
+  canvas.addEventListener('mouseenter', () => isInside = true);
+  canvas.addEventListener('mouseleave', () => { isInside = false; });
+
+  canvas.addEventListener('pointerdown', e => {
+    const r = canvas.getBoundingClientRect();
+    clickX = (e.clientX - r.left) * (SZ / r.width);
+    clickY = (e.clientY - r.top)  * (SZ / r.height);
+    clickAge = 0;
+    shockwave(clickX, clickY);
+    playClick();
+  });
+
+  function shockwave(cx, cy) {
+    dots.forEach(d => {
+      const dx = d.ox - cx, dy = d.oy - cy;
+      const dist = Math.sqrt(dx * dx + dy * dy) + 0.01;
+      const str = Math.min(420 / (dist * dist), 6.5);
+      const delay = (dist / SZ) * 600;
+      setTimeout(() => {
+        d.vx += (dx / dist) * str;
+        d.vy += (dy / dist) * str;
+      }, delay);
+    });
+  }
+
+  function update() {
+    clickAge += 1 / 60;
+    dots.forEach(d => {
+      let fx = 0, fy = 0;
+
+      // Cursor repulsion
+      if (isInside) {
+        const dx = d.ox - mx, dy = d.oy - my;
+        const dist = Math.sqrt(dx * dx + dy * dy) + 0.01;
+        if (dist < REPEL_R) {
+          const str = REPEL_STR * (1 - dist / REPEL_R) * (1 - dist / REPEL_R);
+          fx += (dx / dist) * str;
+          fy += (dy / dist) * str;
+        }
+      }
+
+      // Spring back to origin
+      fx += (d.ox - d.x) * SPRING;
+      fy += (d.oy - d.y) * SPRING;
+
+      d.vx = (d.vx + fx) * DAMP;
+      d.vy = (d.vy + fy) * DAMP;
+      d.x += d.vx;
+      d.y += d.vy;
+    });
+  }
+
+  function draw() {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, SZ, SZ);
+
+    dots.forEach(d => {
+      const dx = d.x - d.ox, dy = d.y - d.oy;
+      const disp = Math.sqrt(dx * dx + dy * dy);
+      const alpha = 0.2 + Math.min(disp / 20, 1) * 0.65;
+      const radius = DOT + Math.min(disp / 16, 1) * 0.9;
+
+      ctx.beginPath();
+      ctx.arc(d.x, d.y, radius, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,255,255,${alpha.toFixed(3)})`;
+      ctx.fill();
+    });
+
+    // Cursor ring
+    if (isInside) {
+      ctx.beginPath();
+      ctx.arc(mx, my, REPEL_R, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(mx, my, 3, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      ctx.fill();
+    }
+  }
+
+  // ── Audio ─────────────────────────────────────────────────────
+  let AC;
+  function ac() {
+    if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+    if (AC.state === 'suspended') AC.resume();
+    return AC;
+  }
+
+  let lastTick = { x: 0, y: 0 }, lastTickT = 0;
+  function maybeTick(x, y) {
+    const dx = x - lastTick.x, dy = y - lastTick.y;
+    if (dx * dx + dy * dy < 20 * 20) return;
+    lastTick = { x, y };
+    try {
+      const a = ac(), t = a.currentTime;
+      if (t - lastTickT < 0.05) return;
+      lastTickT = t;
+      const o = a.createOscillator(), g = a.createGain();
+      o.connect(g); g.connect(a.destination);
+      o.type = 'sine'; o.frequency.setValueAtTime(320, t);
+      o.frequency.exponentialRampToValueAtTime(180, t + 0.06);
+      g.gain.setValueAtTime(0.028, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.07);
+      o.start(t); o.stop(t + 0.08);
+    } catch (_) {}
+  }
+
+  function playClick() {
+    try {
+      const a = ac(), t = a.currentTime;
+      // Magnetic thud — low resonant pop
+      const o = a.createOscillator(), g = a.createGain();
+      o.connect(g); g.connect(a.destination);
+      o.type = 'sine'; o.frequency.setValueAtTime(140, t);
+      o.frequency.exponentialRampToValueAtTime(28, t + 0.22);
+      g.gain.setValueAtTime(0.3, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+      o.start(t); o.stop(t + 0.26);
+
+      // High click transient
+      const o2 = a.createOscillator(), g2 = a.createGain();
+      o2.connect(g2); g2.connect(a.destination);
+      o2.type = 'sine'; o2.frequency.setValueAtTime(2400, t);
+      o2.frequency.exponentialRampToValueAtTime(800, t + 0.08);
+      g2.gain.setValueAtTime(0.06, t);
+      g2.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+      o2.start(t); o2.stop(t + 0.11);
+    } catch (_) {}
+  }
+
+  // ── Loop ─────────────────────────────────────────────────────
+  (function loop() { update(); draw(); requestAnimationFrame(loop); })();
+</script>
+</body>
+</html>

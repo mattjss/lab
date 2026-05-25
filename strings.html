@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>strings</title>
+  <style>
+    :root { --sz: 422px; }
+    @media (min-width: 1440px) { :root { --sz: 576px; } }
+    @media (max-width: 480px)  { :root { --sz: 322px; } }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%; background: #000;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden; font-family: system-ui, sans-serif; cursor: none;
+    }
+    #wrap { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+    canvas {
+      width: var(--sz); height: var(--sz);
+      border-radius: 10px; border: 1px solid rgba(255,255,255,0.06); display: block;
+    }
+    #meta { display: flex; align-items: center; gap: 24px; }
+    #label { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255,255,255,0.2); }
+    #back  { font-size: 10px; letter-spacing: 0.1em; color: rgba(255,255,255,0.15); text-decoration: none; transition: color 0.15s; }
+    #back:hover { color: rgba(255,255,255,0.4); }
+  </style>
+</head>
+<body>
+  <div id="wrap">
+    <canvas id="c"></canvas>
+    <div id="meta">
+      <a href="index.html" id="back">← lab</a>
+      <span id="label">strings — move + click</span>
+    </div>
+  </div>
+<script>
+  const SZ  = 422;
+  const PAD = 36;
+  const NUM = 11;
+  const canvas = document.getElementById('c');
+  canvas.width = canvas.height = SZ;
+  const ctx = canvas.getContext('2d');
+
+  // Pentatonic + octave — one note per string, low → high
+  const FREQS = [196, 220, 261.63, 293.66, 329.63, 392, 440, 523.25, 587.33, 659.25, 783.99];
+
+  const strings = Array.from({ length: NUM }, (_, i) => {
+    const y = PAD + (i / (NUM - 1)) * (SZ - PAD * 2);
+    return { restY: y, cpY: y, cpX: SZ / 2, vel: 0, freq: FREQS[i], pulled: false };
+  });
+
+  let mx = SZ / 2, my = SZ / 2, isInside = false;
+
+  // Gaussian displacement profile — makes the string look physically plucked
+  function stringY(s, x) {
+    const sigma = 68;
+    return s.restY + (s.cpY - s.restY) * Math.exp(-((x - s.cpX) ** 2) / (2 * sigma * sigma));
+  }
+
+  // ── Audio ──────────────────────────────────────────────────────
+  let AC;
+  function ac() {
+    if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+    if (AC.state === 'suspended') AC.resume();
+    return AC;
+  }
+
+  function pluck(freq, vel) {
+    const vol = Math.min(Math.abs(vel) * 0.055, 0.22);
+    if (vol < 0.01) return;
+    try {
+      const a = ac(), t = a.currentTime;
+      const o = a.createOscillator(), g = a.createGain();
+      o.connect(g); g.connect(a.destination);
+      o.type = 'triangle';
+      o.frequency.value = freq;
+      g.gain.setValueAtTime(vol, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.9);
+      o.start(t); o.stop(t + 0.95);
+
+      // Harmonic
+      const o2 = a.createOscillator(), g2 = a.createGain();
+      o2.connect(g2); g2.connect(a.destination);
+      o2.type = 'sine'; o2.frequency.value = freq * 2;
+      g2.gain.setValueAtTime(vol * 0.3, t);
+      g2.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+      o2.start(t); o2.stop(t + 0.5);
+    } catch (_) {}
+  }
+
+  // ── Update ────────────────────────────────────────────────────
+  function update() {
+    strings.forEach(s => {
+      const distV = Math.abs(my - s.restY);
+      const PULL_R = 54;
+      const influenced = isInside && distV < PULL_R;
+
+      if (influenced) {
+        const pull = (1 - distV / PULL_R) * 0.9;
+        const targetCpY = s.restY + (my - s.restY) * pull;
+        s.cpX += (mx - s.cpX) * 0.25;
+        const spring = (targetCpY - s.cpY) * 0.22;
+        s.vel = (s.vel + spring) * 0.78;
+        s.pulled = true;
+      } else {
+        // Spring back to rest
+        const spring = (s.restY - s.cpY) * 0.15;
+        const prevVel = s.vel;
+        s.vel = (s.vel + spring) * 0.74;
+
+        // Pluck sound on release (when velocity reverses near rest)
+        if (s.pulled && Math.sign(prevVel) !== Math.sign(s.vel) && Math.abs(prevVel) > 0.3) {
+          pluck(s.freq, prevVel);
+          s.pulled = false;
+        }
+      }
+
+      s.cpY += s.vel;
+    });
+  }
+
+  // ── Draw ──────────────────────────────────────────────────────
+  function draw() {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, SZ, SZ);
+
+    const N = 90; // points per string
+    strings.forEach(s => {
+      const disp  = Math.abs(s.cpY - s.restY);
+      const alpha = 0.1 + Math.min(disp / 44, 1) * 0.82;
+      const width = 0.8 + Math.min(disp / 60, 1) * 0.55;
+
+      ctx.beginPath();
+      for (let i = 0; i <= N; i++) {
+        const x = PAD + (i / N) * (SZ - PAD * 2);
+        const y = stringY(s, x);
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = `rgba(255,255,255,${alpha.toFixed(3)})`;
+      ctx.lineWidth   = width;
+      ctx.lineCap     = 'round';
+      ctx.stroke();
+    });
+
+    // Cursor dot
+    if (isInside) {
+      ctx.beginPath();
+      ctx.arc(mx, my, 2.5, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.fill();
+    }
+  }
+
+  // ── Input ─────────────────────────────────────────────────────
+  canvas.addEventListener('mousemove', e => {
+    const r = canvas.getBoundingClientRect();
+    mx = (e.clientX - r.left) * (SZ / r.width);
+    my = (e.clientY - r.top)  * (SZ / r.height);
+    isInside = true;
+  });
+  canvas.addEventListener('mouseenter', () => isInside = true);
+  canvas.addEventListener('mouseleave', () => { isInside = false; });
+
+  // Click: strum all strings
+  canvas.addEventListener('pointerdown', e => {
+    const r = canvas.getBoundingClientRect();
+    const cy = (e.clientY - r.top) * (SZ / r.height);
+    strings.forEach((s, i) => {
+      const dist = Math.abs(s.restY - cy);
+      setTimeout(() => {
+        s.vel += (cy < s.restY ? 1 : -1) * Math.max(0, 1 - dist / (SZ * 0.4)) * 7;
+        s.pulled = true;
+      }, i * 18);
+    });
+  });
+
+  // ── Loop ──────────────────────────────────────────────────────
+  (function loop() { update(); draw(); requestAnimationFrame(loop); })();
+</script>
+</body>
+</html>
