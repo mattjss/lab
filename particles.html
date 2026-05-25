@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>particles</title>
+  <style>
+    :root { --sz: 422px; }
+    @media (min-width: 1440px) { :root { --sz: 576px; } }
+    @media (max-width: 480px)  { :root { --sz: 322px; } }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%; background: #000;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden; font-family: system-ui, sans-serif; cursor: none;
+    }
+    #wrap { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+    canvas {
+      width: var(--sz); height: var(--sz);
+      border-radius: 10px; border: 1px solid rgba(255,255,255,0.06); display: block;
+    }
+    #meta { display: flex; align-items: center; gap: 24px; }
+    #label { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255,255,255,0.2); }
+    #back  { font-size: 10px; letter-spacing: 0.1em; color: rgba(255,255,255,0.15); text-decoration: none; transition: color 0.15s; }
+    #back:hover { color: rgba(255,255,255,0.4); }
+  </style>
+</head>
+<body>
+  <div id="wrap">
+    <canvas id="c"></canvas>
+    <div id="meta">
+      <a href="index.html" id="back">← lab</a>
+      <span id="label">particles — move + click</span>
+    </div>
+  </div>
+
+<script>
+  // Internal resolution — physics runs at this size, CSS scales display
+  const SZ = 422;
+
+  const canvas = document.getElementById('c');
+  canvas.width  = SZ;
+  canvas.height = SZ;
+  const ctx = canvas.getContext('2d');
+
+  // ── Particles ────────────────────────────────────────────────
+  const COUNT = 4000;
+  const px  = new Float32Array(COUNT);
+  const py  = new Float32Array(COUNT);
+  const pvx = new Float32Array(COUNT);
+  const pvy = new Float32Array(COUNT);
+
+  for (let i = 0; i < COUNT; i++) {
+    px[i]  = Math.random() * SZ;
+    py[i]  = Math.random() * SZ;
+    pvx[i] = (Math.random() - 0.5) * 0.6;
+    pvy[i] = (Math.random() - 0.5) * 0.6;
+  }
+
+  // ── State ────────────────────────────────────────────────────
+  let mx = SZ / 2, my = SZ / 2;
+  let isInside = false;
+  const GRAVITY  = 9000;
+  const ATTRACT_R = 160;
+  const DAMPING   = 0.978;
+
+  canvas.addEventListener('mousemove', e => {
+    const r = canvas.getBoundingClientRect();
+    mx = (e.clientX - r.left) * (SZ / r.width);
+    my = (e.clientY - r.top)  * (SZ / r.height);
+    isInside = true;
+    maybeTick();
+  });
+  canvas.addEventListener('mouseenter', () => isInside = true);
+  canvas.addEventListener('mouseleave', () => isInside = false);
+
+  canvas.addEventListener('pointerdown', e => {
+    const r = canvas.getBoundingClientRect();
+    const cx = (e.clientX - r.left) * (SZ / r.width);
+    const cy = (e.clientY - r.top)  * (SZ / r.height);
+    explode(cx, cy);
+    playClick();
+  });
+
+  function explode(cx, cy) {
+    for (let i = 0; i < COUNT; i++) {
+      const dx = px[i] - cx, dy = py[i] - cy;
+      const dist = Math.sqrt(dx*dx + dy*dy) + 0.5;
+      const force = Math.min(2800 / (dist * dist), 18);
+      pvx[i] += (dx / dist) * force;
+      pvy[i] += (dy / dist) * force;
+    }
+  }
+
+  // ── Audio ────────────────────────────────────────────────────
+  let AC;
+  function ac() {
+    if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+    if (AC.state === 'suspended') AC.resume();
+    return AC;
+  }
+
+  let lastTick = 0, lastTickX = SZ/2, lastTickY = SZ/2;
+  function maybeTick() {
+    const dx = mx - lastTickX, dy = my - lastTickY;
+    if (dx*dx + dy*dy < 18*18) return;
+    lastTickX = mx; lastTickY = my;
+    try {
+      const a = ac(), t = a.currentTime;
+      if (t - lastTick < 0.05) return;
+      lastTick = t;
+      // Star sparkle — high sine
+      const freq = 1800 + Math.random() * 600;
+      const o = a.createOscillator(), g = a.createGain();
+      o.connect(g); g.connect(a.destination);
+      o.type = 'sine'; o.frequency.setValueAtTime(freq, t);
+      o.frequency.exponentialRampToValueAtTime(freq * 0.6, t + 0.05);
+      g.gain.setValueAtTime(0.038, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.055);
+      o.start(t); o.stop(t + 0.06);
+    } catch(_) {}
+  }
+
+  function playClick() {
+    try {
+      const a = ac(), t = a.currentTime;
+      // Explosion — noise burst + low thud
+      const buf  = a.createBuffer(1, Math.floor(a.sampleRate * 0.15), a.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = (Math.random()*2-1) * Math.exp(-i / (data.length * 0.25));
+      const src = a.createBufferSource(); src.buffer = buf;
+      const g   = a.createGain(); g.gain.setValueAtTime(0.22, t); g.gain.exponentialRampToValueAtTime(0.001, t+0.18);
+      src.connect(g); g.connect(a.destination); src.start(t);
+
+      const o = a.createOscillator(), g2 = a.createGain();
+      o.connect(g2); g2.connect(a.destination);
+      o.type = 'sine'; o.frequency.setValueAtTime(180, t); o.frequency.exponentialRampToValueAtTime(38, t+0.3);
+      g2.gain.setValueAtTime(0.25, t); g2.gain.exponentialRampToValueAtTime(0.001, t+0.32);
+      o.start(t); o.stop(t+0.34);
+    } catch(_) {}
+  }
+
+  // ── Simulation ───────────────────────────────────────────────
+  function update() {
+    for (let i = 0; i < COUNT; i++) {
+      if (isInside) {
+        const dx = mx - px[i], dy = my - py[i];
+        const dist2 = dx*dx + dy*dy + 0.01;
+        const dist  = Math.sqrt(dist2);
+        if (dist < ATTRACT_R) {
+          const force = Math.min(GRAVITY / dist2, 2.8);
+          pvx[i] += (dx / dist) * force * 0.016;
+          pvy[i] += (dy / dist) * force * 0.016;
+        }
+      }
+
+      pvx[i] *= DAMPING;
+      pvy[i] *= DAMPING;
+      px[i]  += pvx[i];
+      py[i]  += pvy[i];
+
+      // Wrap edges
+      if (px[i] < 0)   px[i] += SZ;
+      if (px[i] > SZ)  px[i] -= SZ;
+      if (py[i] < 0)   py[i] += SZ;
+      if (py[i] > SZ)  py[i] -= SZ;
+    }
+  }
+
+  // ── Draw ─────────────────────────────────────────────────────
+  function draw() {
+    // Trail fade — dark translucent fill
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.fillRect(0, 0, SZ, SZ);
+
+    for (let i = 0; i < COUNT; i++) {
+      const speed  = Math.sqrt(pvx[i]*pvx[i] + pvy[i]*pvy[i]);
+      const alpha  = Math.min(0.08 + speed * 0.18, 0.95);
+      const radius = Math.max(0.4, Math.min(speed * 0.35, 2.2));
+
+      ctx.beginPath();
+      ctx.arc(px[i], py[i], radius, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,255,255,${alpha.toFixed(3)})`;
+      ctx.fill();
+    }
+
+    // Cursor ring
+    if (isInside) {
+      ctx.beginPath();
+      ctx.arc(mx, my, 6, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+      ctx.lineWidth   = 1;
+      ctx.stroke();
+    }
+  }
+
+  // ── Loop ─────────────────────────────────────────────────────
+  (function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  })();
+</script>
+</body>
+</html>

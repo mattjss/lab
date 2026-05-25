@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>noise</title>
+  <style>
+    :root { --sz: 422px; }
+    @media (min-width: 1440px) { :root { --sz: 576px; } }
+    @media (max-width: 480px)  { :root { --sz: 322px; } }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%; background: #000;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden; font-family: system-ui, sans-serif; cursor: none;
+    }
+    #wrap { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+    canvas {
+      width: var(--sz); height: var(--sz);
+      border-radius: 10px; border: 1px solid rgba(255,255,255,0.06); display: block;
+    }
+    #meta { display: flex; align-items: center; gap: 24px; }
+    #label { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255,255,255,0.2); }
+    #back  { font-size: 10px; letter-spacing: 0.1em; color: rgba(255,255,255,0.15); text-decoration: none; transition: color 0.15s; }
+    #back:hover { color: rgba(255,255,255,0.4); }
+  </style>
+</head>
+<body>
+  <div id="wrap">
+    <canvas id="c"></canvas>
+    <div id="meta">
+      <a href="index.html" id="back">← lab</a>
+      <span id="label">noise — move + click</span>
+    </div>
+  </div>
+
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js';
+
+const sz = window.innerWidth <= 480 ? 322 : window.innerWidth >= 1440 ? 576 : 422;
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setSize(sz, sz);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+const scene = new THREE.Scene();
+const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
+camera.position.z = 1;
+
+const uniforms = {
+  uTime:      { value: 0.0 },
+  uMouse:     { value: new THREE.Vector2(0.5, 0.5) },
+  uClick:     { value: new THREE.Vector2(-1.0, -1.0) },
+  uClickTime: { value: -10.0 },
+  uMouseIn:   { value: 0.0 },
+};
+
+const mat = new THREE.ShaderMaterial({
+  uniforms,
+  vertexShader: `
+    varying vec2 vUv;
+    void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }
+  `,
+  fragmentShader: `
+    precision highp float;
+    uniform float uTime;
+    uniform vec2  uMouse;
+    uniform vec2  uClick;
+    uniform float uClickTime;
+    uniform float uMouseIn;
+    varying vec2  vUv;
+
+    // Value noise
+    float hash(vec2 p) {
+      return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+    }
+    float vnoise(vec2 p) {
+      vec2 i = floor(p), f = fract(p);
+      vec2 u = f * f * (3.0 - 2.0 * f);
+      return mix(
+        mix(hash(i), hash(i + vec2(1,0)), u.x),
+        mix(hash(i + vec2(0,1)), hash(i + vec2(1,1)), u.x),
+        u.y
+      );
+    }
+
+    // Fractal Brownian Motion
+    float fbm(vec2 p) {
+      float v = 0.0, a = 0.5;
+      mat2 rot = mat2(0.8, 0.6, -0.6, 0.8);
+      for (int i = 0; i < 6; i++) {
+        v += a * vnoise(p);
+        p  = rot * p * 2.02;
+        a *= 0.5;
+      }
+      return v;
+    }
+
+    void main() {
+      vec2 uv = vUv;
+      float t  = uTime * 0.12;
+      float ct = uTime - uClickTime;
+
+      // Mouse vortex distortion
+      vec2 toMouse = uv - uMouse;
+      float mDist  = length(toMouse);
+      vec2 distort = toMouse * exp(-mDist * 5.5) * uMouseIn * 0.38;
+
+      // Click ripple distortion
+      vec2 toClick = uv - uClick;
+      float cDist  = length(toClick);
+      float rippleAmt = 0.0;
+      if (uClick.x > 0.0 && ct < 3.0) {
+        float ring = abs(cDist - ct * 0.4);
+        rippleAmt = exp(-ring * 18.0) * exp(-ct * 1.2) * 0.12;
+        distort += normalize(toClick + vec2(0.001)) * rippleAmt;
+      }
+
+      // Domain-warped FBM (3 layers)
+      vec2 p = uv * 3.2 + vec2(t, t * 0.7) - distort * 2.8;
+      float n1 = fbm(p);
+      float n2 = fbm(p + vec2(n1 * 2.2, n1 * 1.6) + t * 0.18);
+      float n3 = fbm(p + vec2(n2 * 2.0, n2 * 1.4) - t * 0.12);
+
+      float v = n3;
+      v = pow(v, 1.4); // deepen contrast
+
+      // Bright seam where cursor is
+      float mGlow = exp(-mDist * 9.0) * uMouseIn * 0.18;
+      v += mGlow;
+
+      gl_FragColor = vec4(vec3(clamp(v, 0.0, 1.0)), 1.0);
+    }
+  `,
+});
+
+scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat));
+
+// ── Input ──────────────────────────────────────────────────────
+let mx = 0.5, my = 0.5;
+let mouseIn = 0.0, mouseInTarget = 0.0;
+
+canvas.addEventListener('mousemove', e => {
+  const r = canvas.getBoundingClientRect();
+  mx = (e.clientX - r.left) / r.width;
+  my = 1.0 - (e.clientY - r.top) / r.height;
+  maybeTick(e.clientX, e.clientY);
+});
+canvas.addEventListener('mouseenter', () => { mouseInTarget = 1.0; });
+canvas.addEventListener('mouseleave', () => { mouseInTarget = 0.0; });
+
+canvas.addEventListener('pointerdown', e => {
+  const r = canvas.getBoundingClientRect();
+  uniforms.uClick.value.set(
+    (e.clientX - r.left) / r.width,
+    1.0 - (e.clientY - r.top) / r.height
+  );
+  uniforms.uClickTime.value = uniforms.uTime.value;
+  playClick();
+});
+
+// ── Audio ──────────────────────────────────────────────────────
+let AC;
+function ac() {
+  if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+  if (AC.state === 'suspended') AC.resume();
+  return AC;
+}
+
+let lastTick = { x: 0, y: 0 };
+function maybeTick(x, y) {
+  const dx = x - lastTick.x, dy = y - lastTick.y;
+  if (dx*dx + dy*dy < 20*20) return;
+  lastTick = { x, y };
+  try {
+    const a = ac(), t = a.currentTime;
+    // Breathy filtered noise whoosh
+    const buf  = a.createBuffer(1, Math.floor(a.sampleRate * 0.08), a.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = (Math.random()*2-1) * (1 - i/data.length);
+    const src = a.createBufferSource(); src.buffer = buf;
+    const flt = a.createBiquadFilter(); flt.type = 'bandpass'; flt.frequency.value = 900; flt.Q.value = 1.5;
+    const g   = a.createGain(); g.gain.setValueAtTime(0.07, t); g.gain.exponentialRampToValueAtTime(0.001, t+0.08);
+    src.connect(flt); flt.connect(g); g.connect(a.destination); src.start(t);
+  } catch(_) {}
+}
+
+function playClick() {
+  try {
+    const a = ac(), t = a.currentTime;
+    // Crinkle burst — noise + high ring
+    const buf  = a.createBuffer(1, Math.floor(a.sampleRate * 0.12), a.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = (Math.random()*2-1) * Math.exp(-i / (data.length * 0.3));
+    const src = a.createBufferSource(); src.buffer = buf;
+    const g   = a.createGain(); g.gain.setValueAtTime(0.15, t); g.gain.exponentialRampToValueAtTime(0.001, t+0.12);
+    src.connect(g); g.connect(a.destination); src.start(t);
+
+    const o = a.createOscillator(), g2 = a.createGain();
+    o.connect(g2); g2.connect(a.destination);
+    o.type = 'sine'; o.frequency.setValueAtTime(1800, t); o.frequency.exponentialRampToValueAtTime(600, t+0.2);
+    g2.gain.setValueAtTime(0.05, t); g2.gain.exponentialRampToValueAtTime(0.001, t+0.22);
+    o.start(t); o.stop(t+0.23);
+  } catch(_) {}
+}
+
+// ── Loop ───────────────────────────────────────────────────────
+const clock = new THREE.Clock();
+(function animate() {
+  requestAnimationFrame(animate);
+  mouseIn += (mouseInTarget - mouseIn) * 0.08;
+  uniforms.uTime.value = clock.getElapsedTime();
+  uniforms.uMouse.value.set(mx, my);
+  uniforms.uMouseIn.value = mouseIn;
+  renderer.render(scene, camera);
+})();
+</script>
+</body>
+</html>

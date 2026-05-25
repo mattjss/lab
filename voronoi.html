@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>voronoi</title>
+  <style>
+    :root { --sz: 422px; }
+    @media (min-width: 1440px) { :root { --sz: 576px; } }
+    @media (max-width: 480px)  { :root { --sz: 322px; } }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%; background: #000;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden; font-family: system-ui, sans-serif; cursor: none;
+    }
+    #wrap { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+    canvas {
+      width: var(--sz); height: var(--sz);
+      border-radius: 10px; border: 1px solid rgba(255,255,255,0.06);
+      display: block;
+    }
+    #meta { display: flex; align-items: center; gap: 24px; }
+    #label { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255,255,255,0.2); }
+    #back  { font-size: 10px; letter-spacing: 0.1em; color: rgba(255,255,255,0.15); text-decoration: none; transition: color 0.15s; }
+    #back:hover { color: rgba(255,255,255,0.4); }
+  </style>
+</head>
+<body>
+  <div id="wrap">
+    <canvas id="c"></canvas>
+    <div id="meta">
+      <a href="index.html" id="back">← lab</a>
+      <span id="label">voronoi — move + click</span>
+    </div>
+  </div>
+
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js';
+
+const sz = window.innerWidth <= 480 ? 322 : window.innerWidth >= 1440 ? 576 : 422;
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setSize(sz, sz);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+const scene = new THREE.Scene();
+const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
+camera.position.z = 1;
+
+const uniforms = {
+  uTime:      { value: 0.0 },
+  uMouse:     { value: new THREE.Vector2(0.5, 0.5) },
+  uClick:     { value: new THREE.Vector2(-1.0, -1.0) },
+  uClickTime: { value: -10.0 },
+};
+
+const mat = new THREE.ShaderMaterial({
+  uniforms,
+  vertexShader: `
+    varying vec2 vUv;
+    void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }
+  `,
+  fragmentShader: `
+    precision highp float;
+    uniform float uTime;
+    uniform vec2  uMouse;
+    uniform vec2  uClick;
+    uniform float uClickTime;
+    varying vec2  vUv;
+
+    vec2 hash2(vec2 p) {
+      p = vec2(dot(p, vec2(127.1,311.7)), dot(p, vec2(269.5,183.3)));
+      return fract(sin(p) * 43758.5453);
+    }
+
+    void main() {
+      vec2 uv = vUv;
+      float t  = uTime * 0.20;
+      float ct = uTime - uClickTime;
+
+      float d1 = 100.0, d2 = 100.0;
+
+      // Seed 0 — follows mouse
+      float d = distance(uv, uMouse);
+      if (d < d1) { d2 = d1; d1 = d; } else if (d < d2) d2 = d;
+
+      // Seeds 1-15 — animated via hash-seeded Lissajous
+      for (int i = 1; i < 16; i++) {
+        float fi = float(i);
+        vec2 h = hash2(vec2(fi * 0.1713, fi * 0.3271 + 1.7));
+
+        vec2 seed = vec2(
+          0.5 + 0.43 * sin(t * (0.28 + h.x * 0.44) + fi * 1.23),
+          0.5 + 0.43 * cos(t * (0.22 + h.y * 0.37) + fi * 0.97)
+        );
+
+        // Scatter seeds radially from click, then drift back
+        if (ct < 3.0 && uClick.x > 0.0) {
+          vec2 dir = seed - uClick;
+          float len = length(dir);
+          if (len < 0.001) dir = vec2(h.x, h.y);
+          float scatter = exp(-ct * 1.8) * 0.35 * (0.4 + h.x * 0.6);
+          seed += normalize(dir) * scatter;
+        }
+
+        d = distance(uv, seed);
+        if (d < d1) { d2 = d1; d1 = d; } else if (d < d2) d2 = d;
+      }
+
+      // Edge — difference between 2 nearest seeds
+      float edge  = d2 - d1;
+      float glow  = pow(1.0 - smoothstep(0.0, 0.024, edge), 0.65);
+
+      // Mouse proximity bloom
+      float mBloom = exp(-distance(uv, uMouse) * 13.0) * 0.28;
+
+      // Click ripple
+      float ripple = 0.0;
+      if (uClick.x > 0.0) {
+        float dist  = distance(uv, uClick);
+        float front = ct * 0.55;
+        float band  = abs(dist - front);
+        if (band < 0.04) {
+          ripple = (1.0 - band / 0.04) * exp(-ct * 1.2) * 0.5;
+        }
+      }
+
+      float b = clamp(glow * 0.92 + mBloom + ripple, 0.0, 1.0);
+      gl_FragColor = vec4(vec3(b), 1.0);
+    }
+  `,
+});
+
+scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat));
+
+// ── Input ──────────────────────────────────────────────────────
+let mx = 0.5, my = 0.5;
+
+canvas.addEventListener('mousemove', e => {
+  const r = canvas.getBoundingClientRect();
+  mx = (e.clientX - r.left) / r.width;
+  my = 1.0 - (e.clientY - r.top) / r.height;
+  maybeTick(e.clientX, e.clientY);
+});
+
+canvas.addEventListener('pointerdown', e => {
+  const r = canvas.getBoundingClientRect();
+  uniforms.uClick.value.set(
+    (e.clientX - r.left) / r.width,
+    1.0 - (e.clientY - r.top) / r.height
+  );
+  uniforms.uClickTime.value = uniforms.uTime.value;
+  playClick();
+});
+
+// ── Audio ──────────────────────────────────────────────────────
+let AC;
+function ac() {
+  if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+  if (AC.state === 'suspended') AC.resume();
+  return AC;
+}
+
+let lastTick = { x: 0, y: 0 };
+function maybeTick(x, y) {
+  const dx = x - lastTick.x, dy = y - lastTick.y;
+  if (dx*dx + dy*dy < 22*22) return;
+  lastTick = { x, y };
+  try {
+    const a = ac(), t = a.currentTime;
+    const o = a.createOscillator(), g = a.createGain();
+    o.connect(g); g.connect(a.destination);
+    o.type = 'sine';
+    o.frequency.setValueAtTime(700 + Math.random() * 300, t);
+    o.frequency.exponentialRampToValueAtTime(280, t + 0.06);
+    g.gain.setValueAtTime(0.04, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.07);
+    o.start(t); o.stop(t + 0.08);
+  } catch(_) {}
+}
+
+function playClick() {
+  try {
+    const a = ac(), t = a.currentTime;
+    // Bubble pop — pitch dives + harmonics
+    [1.0, 1.5, 2.0].forEach((mult, i) => {
+      const o = a.createOscillator(), g = a.createGain();
+      o.connect(g); g.connect(a.destination);
+      o.type = 'sine';
+      o.frequency.setValueAtTime(560 * mult, t);
+      o.frequency.exponentialRampToValueAtTime(140 * mult, t + 0.14);
+      g.gain.setValueAtTime(0.14 - i * 0.04, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+      o.start(t); o.stop(t + 0.2);
+    });
+  } catch(_) {}
+}
+
+// ── Loop ───────────────────────────────────────────────────────
+const clock = new THREE.Clock();
+(function animate() {
+  requestAnimationFrame(animate);
+  uniforms.uTime.value = clock.getElapsedTime();
+  uniforms.uMouse.value.set(mx, my);
+  renderer.render(scene, camera);
+})();
+</script>
+</body>
+</html>
