@@ -41,6 +41,13 @@
     .right { display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
     .tag { font-size: 10px; letter-spacing: 0.08em; color: rgba(255,255,255,0.13); }
     .arrow { font-size: 11px; color: rgba(255,255,255,0.15); }
+    [data-sound-mute] {
+      background: none; border: none; cursor: pointer; padding: 0;
+      font-size: 10px; letter-spacing: 0.10em; text-transform: uppercase;
+      color: rgba(255,255,255,0.18); font-family: inherit;
+      transition: color 0.15s;
+    }
+    [data-sound-mute]:hover { color: rgba(255,255,255,0.45); }
   </style>
 </head>
 <body>
@@ -48,9 +55,10 @@
     <header>
       <h1>Lab</h1>
       <p>Interactive experiments · move + click each to test</p>
+      <button data-sound-mute="on" aria-label="Mute sounds">sound on</button>
     </header>
     <div class="list">
-      <a class="item" href="https://mattjss.github.io/field/" target="_blank">
+      <a class="item" data-sound-hover="hover" data-sound-click="open-project" href="https://mattjss.github.io/field/" target="_blank">
         <div class="info">
           <span class="name">Vector</span>
           <span class="desc">16×16 grid of bars rotate to face your cursor like compass needles — click fires a radial shockwave</span>
@@ -60,7 +68,7 @@
           <span class="arrow">→</span>
         </div>
       </a>
-      <a class="item" href="https://mattjss.github.io/ripple/" target="_blank">
+      <a class="item" data-sound-hover="hover" data-sound-click="open-project" href="https://mattjss.github.io/ripple/" target="_blank">
         <div class="info">
           <span class="name">Ripple</span>
           <span class="desc">20×20 dot grid with spring physics — cursor disturbs the field and click sends a propagating wave</span>
@@ -70,7 +78,7 @@
           <span class="arrow">→</span>
         </div>
       </a>
-<a class="item" href="https://mattjss.github.io/orbit/" target="_blank">
+<a class="item" data-sound-hover="hover" data-sound-click="open-project" href="https://mattjss.github.io/orbit/" target="_blank">
         <div class="info">
           <span class="name">Orbit</span>
           <span class="desc">Four counter-rotating rings of particles orbit a nucleus that follows your cursor — click ejects them outward</span>
@@ -80,7 +88,7 @@
           <span class="arrow">→</span>
         </div>
       </a>
-      <a class="item" href="https://mattjss.github.io/grid/" target="_blank">
+      <a class="item" data-sound-hover="hover" data-sound-click="open-project" href="https://mattjss.github.io/grid/" target="_blank">
         <div class="info">
           <span class="name">Grid</span>
           <span class="desc">26×26 tick marks rotate in unison to face your cursor — click fires a rotational shockwave across the field</span>
@@ -90,7 +98,7 @@
           <span class="arrow">→</span>
         </div>
       </a>
-      <a class="item" href="https://mattjss.github.io/flow/" target="_blank">
+      <a class="item" data-sound-hover="hover" data-sound-click="open-project" href="https://mattjss.github.io/flow/" target="_blank">
         <div class="info">
           <span class="name">Flow</span>
           <span class="desc">30×30 vector field animates through a curl pattern — cursor creates a live vortex, click sends a ripple</span>
@@ -102,5 +110,6 @@
       </a>
     </div>
   </main>
+  <script src="sound.js"></script>
 </body>
 </html>
