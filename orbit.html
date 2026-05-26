@@ -172,39 +172,35 @@
     lastTick = { x, y };
     try {
       const a = ac(), t = a.currentTime;
-      if (t - lastTickT < 0.05) return;
+      if (t - lastTickT < 0.055) return;
       lastTickT = t;
-      // Soft orbital hum
-      [523.25, 659.25].forEach((freq, i) => {
-        const o = a.createOscillator(), g = a.createGain();
-        o.connect(g); g.connect(a.destination);
-        o.type = 'sine'; o.frequency.value = freq;
-        g.gain.setValueAtTime(0.018 - i * 0.006, t);
-        g.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
-        o.start(t); o.stop(t + 0.1);
-      });
+      // Theremin glide — pitch maps to canvas Y (high cursor = high pitch)
+      const yFrac = my / SZ;
+      const freq  = 880 * Math.pow(0.25, yFrac); // 880Hz top → 220Hz bottom
+      const o = a.createOscillator(), g = a.createGain();
+      o.connect(g); g.connect(a.destination);
+      o.type = 'sine'; o.frequency.setValueAtTime(freq * 1.06, t);
+      o.frequency.exponentialRampToValueAtTime(freq, t + 0.06);
+      g.gain.setValueAtTime(0.0, t); g.gain.setValueAtTime(0.028, t + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+      o.start(t); o.stop(t + 0.13);
     } catch (_) {}
   }
 
   function playClick() {
     try {
       const a = ac(), t = a.currentTime;
-      // Ejection — low whomp + high shimmer
-      const o = a.createOscillator(), g = a.createGain();
-      o.connect(g); g.connect(a.destination);
-      o.type = 'sine'; o.frequency.setValueAtTime(200, t);
-      o.frequency.exponentialRampToValueAtTime(40, t + 0.3);
-      g.gain.setValueAtTime(0.25, t);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.34);
-      o.start(t); o.stop(t + 0.35);
-
-      [1047, 2093].forEach((freq, i) => {
-        const o2 = a.createOscillator(), g2 = a.createGain();
-        o2.connect(g2); g2.connect(a.destination);
-        o2.type = 'sine'; o2.frequency.value = freq;
-        g2.gain.setValueAtTime(0.04 - i * 0.012, t);
-        g2.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
-        o2.start(t); o2.stop(t + 0.21);
+      // Orbital scatter — descending pentatonic cascade, like a music box ejecting
+      const notes = [523.25, 415.30, 329.63, 261.63, 196.00, 130.81];
+      notes.forEach((freq, i) => {
+        const delay = i * 0.055;
+        const o = a.createOscillator(), g = a.createGain();
+        o.connect(g); g.connect(a.destination);
+        o.type = 'sine'; o.frequency.value = freq;
+        g.gain.setValueAtTime(0.001, t + delay);
+        g.gain.setValueAtTime(0.06 - i * 0.006, t + delay + 0.005);
+        g.gain.exponentialRampToValueAtTime(0.001, t + delay + 0.3);
+        o.start(t + delay); o.stop(t + delay + 0.31);
       });
     } catch (_) {}
   }

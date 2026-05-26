@@ -143,41 +143,43 @@
   let lastTick = { x: 0, y: 0 }, lastTickT = 0;
   function maybeTick(x, y) {
     const dx = x - lastTick.x, dy = y - lastTick.y;
-    if (dx * dx + dy * dy < 18 * 18) return;
+    if (dx * dx + dy * dy < 14 * 14) return;
     lastTick = { x, y };
     try {
       const a = ac(), t = a.currentTime;
-      if (t - lastTickT < 0.04) return;
+      if (t - lastTickT < 0.032) return;
       lastTickT = t;
+      // Mechanical relay click — square wave, dry and precise
       const o = a.createOscillator(), g = a.createGain();
       o.connect(g); g.connect(a.destination);
-      o.type = 'sine';
-      o.frequency.setValueAtTime(1400, t);
-      o.frequency.exponentialRampToValueAtTime(700, t + 0.04);
-      g.gain.setValueAtTime(0.025, t);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.045);
-      o.start(t); o.stop(t + 0.05);
+      o.type = 'square'; o.frequency.value = 1900 + Math.random() * 300;
+      g.gain.setValueAtTime(0.016, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.012);
+      o.start(t); o.stop(t + 0.013);
     } catch (_) {}
   }
 
   function playClick() {
     try {
       const a = ac(), t = a.currentTime;
-      const o = a.createOscillator(), g = a.createGain();
-      o.connect(g); g.connect(a.destination);
-      o.type = 'sine'; o.frequency.setValueAtTime(280, t);
-      o.frequency.exponentialRampToValueAtTime(55, t + 0.28);
-      g.gain.setValueAtTime(0.28, t);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.32);
-      o.start(t); o.stop(t + 0.33);
-
+      // Bank of switches firing — clustered mechanical thwacks
+      for (let i = 0; i < 4; i++) {
+        const delay = i * 0.022;
+        const o = a.createOscillator(), g = a.createGain();
+        o.connect(g); g.connect(a.destination);
+        o.type = 'square'; o.frequency.value = 1200 - i * 120;
+        g.gain.setValueAtTime(0.028 - i * 0.005, t + delay);
+        g.gain.exponentialRampToValueAtTime(0.001, t + delay + 0.018);
+        o.start(t + delay); o.stop(t + delay + 0.019);
+      }
+      // Resonant mechanical ring after impact
       const o2 = a.createOscillator(), g2 = a.createGain();
       o2.connect(g2); g2.connect(a.destination);
-      o2.type = 'sine'; o2.frequency.setValueAtTime(2800, t);
-      o2.frequency.exponentialRampToValueAtTime(900, t + 0.18);
-      g2.gain.setValueAtTime(0.05, t);
-      g2.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
-      o2.start(t); o2.stop(t + 0.21);
+      o2.type = 'triangle'; o2.frequency.setValueAtTime(1600, t + 0.08);
+      o2.frequency.exponentialRampToValueAtTime(380, t + 0.45);
+      g2.gain.setValueAtTime(0.001, t); g2.gain.setValueAtTime(0.042, t + 0.08);
+      g2.gain.exponentialRampToValueAtTime(0.001, t + 0.48);
+      o2.start(t + 0.08); o2.stop(t + 0.49);
     } catch (_) {}
   }
 

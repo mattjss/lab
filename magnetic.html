@@ -164,38 +164,54 @@
     lastTick = { x, y };
     try {
       const a = ac(), t = a.currentTime;
-      if (t - lastTickT < 0.05) return;
+      if (t - lastTickT < 0.07) return;
       lastTickT = t;
+      // Deep electromagnetic field hum — subsonic, like near a transformer
       const o = a.createOscillator(), g = a.createGain();
       o.connect(g); g.connect(a.destination);
-      o.type = 'sine'; o.frequency.setValueAtTime(320, t);
-      o.frequency.exponentialRampToValueAtTime(180, t + 0.06);
-      g.gain.setValueAtTime(0.028, t);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.07);
-      o.start(t); o.stop(t + 0.08);
+      o.type = 'sine'; o.frequency.value = 52;
+      g.gain.setValueAtTime(0.11, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+      o.start(t); o.stop(t + 0.15);
+
+      const o2 = a.createOscillator(), g2 = a.createGain();
+      o2.connect(g2); g2.connect(a.destination);
+      o2.type = 'sine'; o2.frequency.value = 104;
+      g2.gain.setValueAtTime(0.032, t);
+      g2.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+      o2.start(t); o2.stop(t + 0.11);
     } catch (_) {}
   }
 
   function playClick() {
     try {
       const a = ac(), t = a.currentTime;
-      // Magnetic thud — low resonant pop
-      const o = a.createOscillator(), g = a.createGain();
-      o.connect(g); g.connect(a.destination);
-      o.type = 'sine'; o.frequency.setValueAtTime(140, t);
-      o.frequency.exponentialRampToValueAtTime(28, t + 0.22);
-      g.gain.setValueAtTime(0.3, t);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
-      o.start(t); o.stop(t + 0.26);
+      // Magnetic snap — sharp crack as field releases
+      const buf  = a.createBuffer(1, Math.floor(a.sampleRate * 0.018), a.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (data.length * 0.12));
+      const src = a.createBufferSource(); src.buffer = buf;
+      const flt = a.createBiquadFilter(); flt.type = 'highpass'; flt.frequency.value = 3800;
+      const gn  = a.createGain(); gn.gain.setValueAtTime(0.38, t); gn.gain.exponentialRampToValueAtTime(0.001, t + 0.022);
+      src.connect(flt); flt.connect(gn); gn.connect(a.destination); src.start(t);
 
-      // High click transient
-      const o2 = a.createOscillator(), g2 = a.createGain();
-      o2.connect(g2); g2.connect(a.destination);
-      o2.type = 'sine'; o2.frequency.setValueAtTime(2400, t);
-      o2.frequency.exponentialRampToValueAtTime(800, t + 0.08);
-      g2.gain.setValueAtTime(0.06, t);
-      g2.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
-      o2.start(t); o2.stop(t + 0.11);
+      // Field collapse — subsonic boom
+      const o = a.createOscillator(), g2 = a.createGain();
+      o.connect(g2); g2.connect(a.destination);
+      o.type = 'sine'; o.frequency.setValueAtTime(88, t);
+      o.frequency.exponentialRampToValueAtTime(16, t + 0.44);
+      g2.gain.setValueAtTime(0.33, t);
+      g2.gain.exponentialRampToValueAtTime(0.001, t + 0.46);
+      o.start(t); o.stop(t + 0.47);
+
+      // Metallic ring — delayed, decays slowly
+      const o2 = a.createOscillator(), g3 = a.createGain();
+      o2.connect(g3); g3.connect(a.destination);
+      o2.type = 'sine'; o2.frequency.setValueAtTime(3800, t + 0.012);
+      o2.frequency.exponentialRampToValueAtTime(1600, t + 0.32);
+      g3.gain.setValueAtTime(0.001, t); g3.gain.setValueAtTime(0.058, t + 0.012);
+      g3.gain.exponentialRampToValueAtTime(0.001, t + 0.36);
+      o2.start(t + 0.012); o2.stop(t + 0.37);
     } catch (_) {}
   }
 

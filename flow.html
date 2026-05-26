@@ -176,19 +176,25 @@
   let lastTick = { x: 0, y: 0 }, lastTickT = 0;
   function maybeTick(x, y) {
     const dx = x - lastTick.x, dy = y - lastTick.y;
-    if (dx * dx + dy * dy < 20 * 20) return;
+    const speed = Math.sqrt(dx * dx + dy * dy);
+    if (speed < 18) return;
     lastTick = { x, y };
     try {
       const a = ac(), t = a.currentTime;
-      if (t - lastTickT < 0.04) return;
+      if (t - lastTickT < 0.036) return;
       lastTickT = t;
-      // Wind whisper
-      const buf  = a.createBuffer(1, Math.floor(a.sampleRate * 0.055), a.sampleRate);
+      // Wind gust — speed-dependent bandpass noise, pitch rises with velocity
+      const dur  = 0.065;
+      const buf  = a.createBuffer(1, Math.floor(a.sampleRate * dur), a.sampleRate);
       const data = buf.getChannelData(0);
-      for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+      for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (data.length * 0.6));
       const src = a.createBufferSource(); src.buffer = buf;
-      const flt = a.createBiquadFilter(); flt.type = 'bandpass'; flt.frequency.value = 1600; flt.Q.value = 1.2;
-      const g   = a.createGain(); g.gain.setValueAtTime(0.04, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
+      const flt = a.createBiquadFilter();
+      flt.type = 'bandpass';
+      flt.frequency.value = 700 + Math.min(speed * 18, 1800); // faster = higher
+      flt.Q.value = 1.4;
+      const vol = Math.min(0.025 + speed * 0.0016, 0.072);
+      const g   = a.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
       src.connect(flt); flt.connect(g); g.connect(a.destination); src.start(t);
     } catch (_) {}
   }
@@ -196,21 +202,23 @@
   function playClick() {
     try {
       const a = ac(), t = a.currentTime;
-      // Vortex drop — spinning whoosh
-      const o = a.createOscillator(), g = a.createGain();
-      o.connect(g); g.connect(a.destination);
-      o.type = 'sine'; o.frequency.setValueAtTime(440, t);
-      o.frequency.exponentialRampToValueAtTime(88, t + 0.4);
-      g.gain.setValueAtTime(0.18, t);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.42);
-      o.start(t); o.stop(t + 0.43);
-
-      const buf  = a.createBuffer(1, Math.floor(a.sampleRate * 0.15), a.sampleRate);
+      // Vortex drain — two detuned sines create beating flutter as they fall
+      [440, 447].forEach(freq => {
+        const o = a.createOscillator(), g = a.createGain();
+        o.connect(g); g.connect(a.destination);
+        o.type = 'sine'; o.frequency.setValueAtTime(freq, t);
+        o.frequency.exponentialRampToValueAtTime(freq * 0.2, t + 0.55);
+        g.gain.setValueAtTime(0.12, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.58);
+        o.start(t); o.stop(t + 0.59);
+      });
+      // Air rush — highpass noise burst at impact
+      const buf  = a.createBuffer(1, Math.floor(a.sampleRate * 0.12), a.sampleRate);
       const data = buf.getChannelData(0);
-      for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (data.length * 0.4));
+      for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (data.length * 0.35));
       const src = a.createBufferSource(); src.buffer = buf;
-      const flt = a.createBiquadFilter(); flt.type = 'highpass'; flt.frequency.value = 2000;
-      const g2  = a.createGain(); g2.gain.setValueAtTime(0.1, t); g2.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+      const flt = a.createBiquadFilter(); flt.type = 'bandpass'; flt.frequency.value = 2400; flt.Q.value = 0.8;
+      const g2  = a.createGain(); g2.gain.setValueAtTime(0.14, t); g2.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
       src.connect(flt); flt.connect(g2); g2.connect(a.destination); src.start(t);
     } catch (_) {}
   }
