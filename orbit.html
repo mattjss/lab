@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>orbit</title>
+  <style>
+    :root { --sz: 422px; }
+    @media (min-width: 1440px) { :root { --sz: 576px; } }
+    @media (max-width: 480px)  { :root { --sz: 322px; } }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%; background: #000;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden; font-family: system-ui, sans-serif; cursor: none;
+    }
+    #wrap { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+    canvas {
+      width: var(--sz); height: var(--sz);
+      border-radius: 10px; border: 1px solid rgba(255,255,255,0.06); display: block;
+    }
+    #meta { display: flex; align-items: center; gap: 24px; }
+    #label { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255,255,255,0.2); }
+    #back  { font-size: 10px; letter-spacing: 0.1em; color: rgba(255,255,255,0.15); text-decoration: none; transition: color 0.15s; }
+    #back:hover { color: rgba(255,255,255,0.4); }
+  </style>
+</head>
+<body>
+  <div id="wrap">
+    <canvas id="c"></canvas>
+    <div id="meta">
+      <a href="index.html" id="back">← lab</a>
+      <span id="label">orbit — move + click</span>
+    </div>
+  </div>
+<script>
+  const SZ = 422;
+  const canvas = document.getElementById('c');
+  canvas.width = canvas.height = SZ;
+  const ctx = canvas.getContext('2d');
+
+  // Orbital center — springs toward cursor
+  let cx = SZ / 2, cy = SZ / 2;
+  let cvx = 0, cvy = 0;
+  let mx = SZ / 2, my = SZ / 2, isInside = false;
+
+  // Ring definitions: radius, count, angular speed (rad/frame), direction, base alpha
+  const RINGS = [
+    { r: 38,  n: 7,  spd:  0.022, alpha: 0.75 },
+    { r: 72,  n: 12, spd: -0.014, alpha: 0.52 },
+    { r: 112, n: 18, spd:  0.009, alpha: 0.34 },
+    { r: 155, n: 24, spd: -0.006, alpha: 0.20 },
+  ];
+
+  // Particles: { ringIdx, angle, r, vr (radial vel for ejection) }
+  const particles = [];
+  RINGS.forEach((ring, ri) => {
+    for (let i = 0; i < ring.n; i++) {
+      particles.push({
+        ri,
+        angle: (i / ring.n) * Math.PI * 2,
+        r: ring.r,
+        vr: 0,       // radial velocity (for ejection)
+        va: 0,       // extra angular velocity
+      });
+    }
+  });
+
+  canvas.addEventListener('mousemove', e => {
+    const r = canvas.getBoundingClientRect();
+    mx = (e.clientX - r.left) * (SZ / r.width);
+    my = (e.clientY - r.top)  * (SZ / r.height);
+    isInside = true;
+    maybeTick(e.clientX, e.clientY);
+  });
+  canvas.addEventListener('mouseenter', () => isInside = true);
+  canvas.addEventListener('mouseleave', () => isInside = false);
+
+  canvas.addEventListener('pointerdown', () => {
+    // Eject all particles radially outward
+    particles.forEach(p => {
+      p.vr += 4 + Math.random() * 3;
+      p.va += (Math.random() - 0.5) * 0.04;
+    });
+    playClick();
+  });
+
+  function update() {
+    // Center spring toward cursor (or hold center when no cursor)
+    const tx = isInside ? mx : SZ / 2;
+    const ty = isInside ? my : SZ / 2;
+    cvx += (tx - cx) * 0.055;
+    cvy += (ty - cy) * 0.055;
+    cvx *= 0.82; cvy *= 0.82;
+    cx += cvx; cy += cvy;
+
+    particles.forEach(p => {
+      const ring = RINGS[p.ri];
+      // Advance angle
+      p.angle += ring.spd + p.va;
+      p.va *= 0.92;
+      // Radial spring back
+      const restR = ring.r;
+      p.vr += (restR - p.r) * 0.12;
+      p.vr *= 0.78;
+      p.r += p.vr;
+      p.r = Math.max(p.r, 2);
+    });
+  }
+
+  function draw() {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, SZ, SZ);
+
+    // Draw orbital rings (faint guide circles)
+    RINGS.forEach(ring => {
+      ctx.beginPath();
+      ctx.arc(cx, cy, ring.r, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    });
+
+    // Draw particles
+    particles.forEach(p => {
+      const ring = RINGS[p.ri];
+      const px = cx + Math.cos(p.angle) * p.r;
+      const py = cy + Math.sin(p.angle) * p.r;
+
+      // Brightness based on radial displacement
+      const disp = Math.abs(p.r - ring.r);
+      const alpha = ring.alpha + Math.min(disp / 20, 1) * 0.3;
+      const radius = 1.5 + Math.min(disp / 30, 1) * 1.0;
+
+      ctx.beginPath();
+      ctx.arc(px, py, radius, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,255,255,${Math.min(alpha, 0.95).toFixed(3)})`;
+      ctx.fill();
+    });
+
+    // Center nucleus
+    ctx.beginPath();
+    ctx.arc(cx, cy, 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.fill();
+
+    // Cursor dot (when not near center)
+    if (isInside) {
+      const dx = mx - cx, dy = my - cy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > 8) {
+        ctx.beginPath();
+        ctx.arc(mx, my, 1.5, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255,255,255,0.25)';
+        ctx.fill();
+      }
+    }
+  }
+
+  // ── Audio ─────────────────────────────────────────────────────
+  let AC;
+  function ac() {
+    if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+    if (AC.state === 'suspended') AC.resume();
+    return AC;
+  }
+
+  let lastTick = { x: 0, y: 0 }, lastTickT = 0;
+  function maybeTick(x, y) {
+    const dx = x - lastTick.x, dy = y - lastTick.y;
+    if (dx * dx + dy * dy < 22 * 22) return;
+    lastTick = { x, y };
+    try {
+      const a = ac(), t = a.currentTime;
+      if (t - lastTickT < 0.05) return;
+      lastTickT = t;
+      // Soft orbital hum
+      [523.25, 659.25].forEach((freq, i) => {
+        const o = a.createOscillator(), g = a.createGain();
+        o.connect(g); g.connect(a.destination);
+        o.type = 'sine'; o.frequency.value = freq;
+        g.gain.setValueAtTime(0.018 - i * 0.006, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+        o.start(t); o.stop(t + 0.1);
+      });
+    } catch (_) {}
+  }
+
+  function playClick() {
+    try {
+      const a = ac(), t = a.currentTime;
+      // Ejection — low whomp + high shimmer
+      const o = a.createOscillator(), g = a.createGain();
+      o.connect(g); g.connect(a.destination);
+      o.type = 'sine'; o.frequency.setValueAtTime(200, t);
+      o.frequency.exponentialRampToValueAtTime(40, t + 0.3);
+      g.gain.setValueAtTime(0.25, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.34);
+      o.start(t); o.stop(t + 0.35);
+
+      [1047, 2093].forEach((freq, i) => {
+        const o2 = a.createOscillator(), g2 = a.createGain();
+        o2.connect(g2); g2.connect(a.destination);
+        o2.type = 'sine'; o2.frequency.value = freq;
+        g2.gain.setValueAtTime(0.04 - i * 0.012, t);
+        g2.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+        o2.start(t); o2.stop(t + 0.21);
+      });
+    } catch (_) {}
+  }
+
+  (function loop() { update(); draw(); requestAnimationFrame(loop); })();
+</script>
+</body>
+</html>

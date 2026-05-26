@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>grid</title>
+  <style>
+    :root { --sz: 422px; }
+    @media (min-width: 1440px) { :root { --sz: 576px; } }
+    @media (max-width: 480px)  { :root { --sz: 322px; } }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%; background: #000;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden; font-family: system-ui, sans-serif; cursor: none;
+    }
+    #wrap { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+    canvas {
+      width: var(--sz); height: var(--sz);
+      border-radius: 10px; border: 1px solid rgba(255,255,255,0.06); display: block;
+    }
+    #meta { display: flex; align-items: center; gap: 24px; }
+    #label { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255,255,255,0.2); }
+    #back  { font-size: 10px; letter-spacing: 0.1em; color: rgba(255,255,255,0.15); text-decoration: none; transition: color 0.15s; }
+    #back:hover { color: rgba(255,255,255,0.4); }
+  </style>
+</head>
+<body>
+  <div id="wrap">
+    <canvas id="c"></canvas>
+    <div id="meta">
+      <a href="index.html" id="back">← lab</a>
+      <span id="label">grid — move + click</span>
+    </div>
+  </div>
+<script>
+  const SZ   = 422;
+  const COLS = 26, ROWS = 26;
+  const GAP  = SZ / COLS;
+  const LEN  = 9;
+
+  const canvas = document.getElementById('c');
+  canvas.width = canvas.height = SZ;
+  const ctx = canvas.getContext('2d');
+
+  const ticks = [];
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const x = (c + 0.5) * GAP;
+      const y = (r + 0.5) * GAP;
+      ticks.push({ x, y, angle: Math.PI / 2, vel: 0 });
+    }
+  }
+
+  let mx = SZ / 2, my = SZ / 2, isInside = false;
+
+  canvas.addEventListener('mousemove', e => {
+    const r = canvas.getBoundingClientRect();
+    mx = (e.clientX - r.left) * (SZ / r.width);
+    my = (e.clientY - r.top)  * (SZ / r.height);
+    isInside = true;
+    maybeTick(e.clientX, e.clientY);
+  });
+  canvas.addEventListener('mouseenter', () => isInside = true);
+  canvas.addEventListener('mouseleave', () => isInside = false);
+
+  canvas.addEventListener('pointerdown', e => {
+    const r = canvas.getBoundingClientRect();
+    const cx = (e.clientX - r.left) * (SZ / r.width);
+    const cy = (e.clientY - r.top)  * (SZ / r.height);
+    ticks.forEach(t => {
+      const dx = t.x - cx, dy = t.y - cy;
+      const dist = Math.sqrt(dx * dx + dy * dy) + 1;
+      const str = Math.min(5.5 / dist, 0.9);
+      const delay = (dist / SZ) * 700;
+      setTimeout(() => { t.vel += str * (Math.random() < 0.5 ? 1 : -1); }, delay);
+    });
+    playClick();
+  });
+
+  function wrapAngle(a) {
+    while (a >  Math.PI) a -= Math.PI * 2;
+    while (a < -Math.PI) a += Math.PI * 2;
+    return a;
+  }
+
+  function update() {
+    ticks.forEach(t => {
+      const target = isInside
+        ? Math.atan2(my - t.y, mx - t.x)
+        : Math.PI / 2;
+      const diff = wrapAngle(target - t.angle);
+      t.vel += diff * 0.18;
+      t.vel *= 0.72;
+      t.angle += t.vel;
+    });
+  }
+
+  function draw() {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, SZ, SZ);
+
+    ticks.forEach(t => {
+      let alpha = 0.14;
+      if (isInside) {
+        const dx = t.x - mx, dy = t.y - my;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        alpha = 0.14 + Math.max(0, 1 - dist / 180) * 0.62;
+      }
+      const activity = Math.min(Math.abs(t.vel) * 6, 1);
+      alpha = Math.max(alpha, 0.14 + activity * 0.5);
+
+      const cos = Math.cos(t.angle), sin = Math.sin(t.angle);
+      const x0 = t.x - cos * LEN / 2, y0 = t.y - sin * LEN / 2;
+      const x1 = t.x + cos * LEN / 2, y1 = t.y + sin * LEN / 2;
+
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.lineTo(x1, y1);
+      ctx.strokeStyle = `rgba(255,255,255,${alpha.toFixed(3)})`;
+      ctx.lineWidth = 1;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+    });
+
+    // Cursor dot
+    if (isInside) {
+      ctx.beginPath();
+      ctx.arc(mx, my, 2.5, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.fill();
+    }
+  }
+
+  // ── Audio ─────────────────────────────────────────────────────
+  let AC;
+  function ac() {
+    if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+    if (AC.state === 'suspended') AC.resume();
+    return AC;
+  }
+
+  let lastTick = { x: 0, y: 0 }, lastTickT = 0;
+  function maybeTick(x, y) {
+    const dx = x - lastTick.x, dy = y - lastTick.y;
+    if (dx * dx + dy * dy < 18 * 18) return;
+    lastTick = { x, y };
+    try {
+      const a = ac(), t = a.currentTime;
+      if (t - lastTickT < 0.04) return;
+      lastTickT = t;
+      const o = a.createOscillator(), g = a.createGain();
+      o.connect(g); g.connect(a.destination);
+      o.type = 'sine';
+      o.frequency.setValueAtTime(1400, t);
+      o.frequency.exponentialRampToValueAtTime(700, t + 0.04);
+      g.gain.setValueAtTime(0.025, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.045);
+      o.start(t); o.stop(t + 0.05);
+    } catch (_) {}
+  }
+
+  function playClick() {
+    try {
+      const a = ac(), t = a.currentTime;
+      const o = a.createOscillator(), g = a.createGain();
+      o.connect(g); g.connect(a.destination);
+      o.type = 'sine'; o.frequency.setValueAtTime(280, t);
+      o.frequency.exponentialRampToValueAtTime(55, t + 0.28);
+      g.gain.setValueAtTime(0.28, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.32);
+      o.start(t); o.stop(t + 0.33);
+
+      const o2 = a.createOscillator(), g2 = a.createGain();
+      o2.connect(g2); g2.connect(a.destination);
+      o2.type = 'sine'; o2.frequency.setValueAtTime(2800, t);
+      o2.frequency.exponentialRampToValueAtTime(900, t + 0.18);
+      g2.gain.setValueAtTime(0.05, t);
+      g2.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+      o2.start(t); o2.stop(t + 0.21);
+    } catch (_) {}
+  }
+
+  (function loop() { update(); draw(); requestAnimationFrame(loop); })();
+</script>
+</body>
+</html>

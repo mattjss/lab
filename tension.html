@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>tension</title>
+  <style>
+    :root { --sz: 422px; }
+    @media (min-width: 1440px) { :root { --sz: 576px; } }
+    @media (max-width: 480px)  { :root { --sz: 322px; } }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%; background: #000;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden; font-family: system-ui, sans-serif; cursor: none;
+    }
+    #wrap { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+    canvas {
+      width: var(--sz); height: var(--sz);
+      border-radius: 10px; border: 1px solid rgba(255,255,255,0.06); display: block;
+    }
+    #meta { display: flex; align-items: center; gap: 24px; }
+    #label { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255,255,255,0.2); }
+    #back  { font-size: 10px; letter-spacing: 0.1em; color: rgba(255,255,255,0.15); text-decoration: none; transition: color 0.15s; }
+    #back:hover { color: rgba(255,255,255,0.4); }
+  </style>
+</head>
+<body>
+  <div id="wrap">
+    <canvas id="c"></canvas>
+    <div id="meta">
+      <a href="index.html" id="back">← lab</a>
+      <span id="label">tension — move + click</span>
+    </div>
+  </div>
+<script>
+  const SZ   = 422;
+  const COLS = 18, ROWS = 18;
+  const PAD  = 28;
+  const SPRING  = 0.09;
+  const DAMP    = 0.76;
+  const PULL_R  = 110;
+  const PULL_STR = 3800;
+
+  const canvas = document.getElementById('c');
+  canvas.width = canvas.height = SZ;
+  const ctx = canvas.getContext('2d');
+
+  const nodes = [];
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const ox = PAD + (c / (COLS - 1)) * (SZ - PAD * 2);
+      const oy = PAD + (r / (ROWS - 1)) * (SZ - PAD * 2);
+      nodes.push({ ox, oy, x: ox, y: oy, vx: 0, vy: 0, r, c });
+    }
+  }
+
+  function node(r, c) { return nodes[r * COLS + c]; }
+
+  let mx = SZ / 2, my = SZ / 2, isInside = false;
+
+  canvas.addEventListener('mousemove', e => {
+    const r = canvas.getBoundingClientRect();
+    mx = (e.clientX - r.left) * (SZ / r.width);
+    my = (e.clientY - r.top)  * (SZ / r.height);
+    isInside = true;
+    maybeTick(e.clientX, e.clientY);
+  });
+  canvas.addEventListener('mouseenter', () => isInside = true);
+  canvas.addEventListener('mouseleave', () => isInside = false);
+
+  canvas.addEventListener('pointerdown', e => {
+    const r = canvas.getBoundingClientRect();
+    const cx = (e.clientX - r.left) * (SZ / r.width);
+    const cy = (e.clientY - r.top)  * (SZ / r.height);
+    // Repel shockwave — opposite of attraction
+    nodes.forEach(n => {
+      const dx = n.ox - cx, dy = n.oy - cy;
+      const dist = Math.sqrt(dx * dx + dy * dy) + 1;
+      const str = Math.min(900 / (dist * dist), 5.5);
+      const delay = (dist / SZ) * 500;
+      setTimeout(() => {
+        n.vx += (dx / dist) * str;
+        n.vy += (dy / dist) * str;
+      }, delay);
+    });
+    playClick();
+  });
+
+  function update() {
+    nodes.forEach(n => {
+      let fx = 0, fy = 0;
+
+      // Cursor attraction (pull toward cursor)
+      if (isInside) {
+        const dx = mx - n.x, dy = my - n.y;
+        const dist2 = dx * dx + dy * dy + 1;
+        const dist  = Math.sqrt(dist2);
+        if (dist < PULL_R) {
+          const str = Math.min(PULL_STR / dist2, 2.8) * (1 - dist / PULL_R);
+          fx += (dx / dist) * str * 0.016;
+          fy += (dy / dist) * str * 0.016;
+        }
+      }
+
+      // Spring back to rest
+      fx += (n.ox - n.x) * SPRING;
+      fy += (n.oy - n.y) * SPRING;
+
+      n.vx = (n.vx + fx) * DAMP;
+      n.vy = (n.vy + fy) * DAMP;
+      n.x += n.vx;
+      n.y += n.vy;
+    });
+  }
+
+  function draw() {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, SZ, SZ);
+
+    // Horizontal connections
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS - 1; c++) {
+        const a = node(r, c), b = node(r, c + 1);
+        drawEdge(a, b);
+      }
+    }
+    // Vertical connections
+    for (let r = 0; r < ROWS - 1; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const a = node(r, c), b = node(r + 1, c);
+        drawEdge(a, b);
+      }
+    }
+
+    // Cursor dot
+    if (isInside) {
+      ctx.beginPath();
+      ctx.arc(mx, my, 2.5, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.45)';
+      ctx.fill();
+    }
+  }
+
+  function drawEdge(a, b) {
+    const dax = a.x - a.ox, day = a.y - a.oy;
+    const dbx = b.x - b.ox, dby = b.y - b.oy;
+    const stretchA = Math.sqrt(dax * dax + day * day);
+    const stretchB = Math.sqrt(dbx * dbx + dby * dby);
+    const stretch  = (stretchA + stretchB) * 0.5;
+    const alpha = 0.1 + Math.min(stretch / 22, 1) * 0.72;
+    const width = 0.6 + Math.min(stretch / 28, 1) * 0.5;
+
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.strokeStyle = `rgba(255,255,255,${alpha.toFixed(3)})`;
+    ctx.lineWidth = width;
+    ctx.stroke();
+  }
+
+  // ── Audio ─────────────────────────────────────────────────────
+  let AC;
+  function ac() {
+    if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+    if (AC.state === 'suspended') AC.resume();
+    return AC;
+  }
+
+  let lastTick = { x: 0, y: 0 }, lastTickT = 0;
+  function maybeTick(x, y) {
+    const dx = x - lastTick.x, dy = y - lastTick.y;
+    if (dx * dx + dy * dy < 16 * 16) return;
+    lastTick = { x, y };
+    try {
+      const a = ac(), t = a.currentTime;
+      if (t - lastTickT < 0.04) return;
+      lastTickT = t;
+      // Silk stretch sound
+      const buf  = a.createBuffer(1, Math.floor(a.sampleRate * 0.06), a.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+      const src = a.createBufferSource(); src.buffer = buf;
+      const flt = a.createBiquadFilter(); flt.type = 'bandpass'; flt.frequency.value = 1200; flt.Q.value = 2;
+      const g   = a.createGain(); g.gain.setValueAtTime(0.045, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.065);
+      src.connect(flt); flt.connect(g); g.connect(a.destination); src.start(t);
+    } catch (_) {}
+  }
+
+  function playClick() {
+    try {
+      const a = ac(), t = a.currentTime;
+      // Snap — sharp transient then resonant ring
+      const o = a.createOscillator(), g = a.createGain();
+      o.connect(g); g.connect(a.destination);
+      o.type = 'sine'; o.frequency.setValueAtTime(600, t);
+      o.frequency.exponentialRampToValueAtTime(120, t + 0.15);
+      g.gain.setValueAtTime(0.22, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+      o.start(t); o.stop(t + 0.36);
+
+      const o2 = a.createOscillator(), g2 = a.createGain();
+      o2.connect(g2); g2.connect(a.destination);
+      o2.type = 'triangle'; o2.frequency.setValueAtTime(3400, t);
+      o2.frequency.exponentialRampToValueAtTime(1200, t + 0.1);
+      g2.gain.setValueAtTime(0.055, t);
+      g2.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+      o2.start(t); o2.stop(t + 0.13);
+    } catch (_) {}
+  }
+
+  (function loop() { update(); draw(); requestAnimationFrame(loop); })();
+</script>
+</body>
+</html>
