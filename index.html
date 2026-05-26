@@ -28,16 +28,21 @@
     }
     .subtitle { font-size: 11px; color: rgba(255,255,255,0.22); letter-spacing: 0.04em; }
     .list { display: flex; flex-direction: column; }
+
+    .item-wrap {
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .item-wrap:first-child { border-top: 1px solid rgba(255,255,255,0.06); }
+
     a.item {
       display: flex; flex-direction: column;
-      padding: 20px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
+      padding: 20px 0 16px;
       text-decoration: none; color: inherit;
       transition: opacity 0.15s;
     }
-    a.item:first-child { border-top: 1px solid rgba(255,255,255,0.06); }
     a.item:hover { opacity: 0.6; }
     a.item:active { opacity: 0.35; }
+
     .item-top {
       display: flex; align-items: center; justify-content: space-between; gap: 16px;
     }
@@ -47,10 +52,33 @@
     .right { display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
     .tag { font-size: 10px; letter-spacing: 0.08em; color: rgba(255,255,255,0.13); }
     .arrow { font-size: 11px; color: rgba(255,255,255,0.15); }
+
+    details.about-wrap { padding-bottom: 16px; }
+    details.about-wrap summary {
+      list-style: none;
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 10px; letter-spacing: 0.10em; text-transform: uppercase;
+      color: rgba(255,255,255,0.18);
+      cursor: pointer;
+      user-select: none;
+      transition: color 0.15s;
+    }
+    details.about-wrap summary::-webkit-details-marker { display: none; }
+    details.about-wrap summary::after {
+      content: '↓';
+      font-size: 9px;
+      transition: transform 0.2s;
+      display: inline-block;
+    }
+    details.about-wrap[open] summary::after { transform: rotate(180deg); }
+    details.about-wrap summary:hover { color: rgba(255,255,255,0.45); }
+
     .about {
       font-size: 11px; color: rgba(255,255,255,0.20);
       line-height: 1.7; margin-top: 10px;
+      user-select: text;
     }
+
     [data-sound-mute] {
       background: none; border: none; cursor: pointer; padding: 0;
       font-size: 10px; letter-spacing: 0.10em; text-transform: uppercase;
@@ -69,75 +97,100 @@
     </header>
     <div class="list">
 
-      <a class="item" data-sound-hover="hover" data-sound-click="open-project" href="https://mattjss.github.io/Vector/" target="_blank">
-        <div class="item-top">
-          <div class="info">
-            <span class="name">Vector</span>
-            <span class="desc">A grid of bars that all point toward your cursor. Click to send a wave through the field.</span>
+      <div class="item-wrap">
+        <a class="item" data-sound-hover="hover" data-sound-click="open-project" href="https://mattjss.github.io/Vector/" target="_blank">
+          <div class="item-top">
+            <div class="info">
+              <span class="name">Vector</span>
+              <span class="desc">A grid of bars that all point toward your cursor. Click to send a wave through the field.</span>
+            </div>
+            <div class="right">
+              <span class="tag">DOM · CSS · angular spring</span>
+              <span class="arrow">→</span>
+            </div>
           </div>
-          <div class="right">
-            <span class="tag">DOM · CSS · angular spring</span>
-            <span class="arrow">→</span>
-          </div>
-        </div>
-        <p class="about">Curious what would happen if every element on screen reacted to your cursor at once. Move around and they all follow — some snap fast, others drift depending on how close you are. Click anywhere to throw them off before they recover.</p>
-      </a>
+        </a>
+        <details class="about-wrap">
+          <summary>about</summary>
+          <p class="about">Curious what would happen if every element on screen reacted to your cursor at once. Move around and they all follow — some snap fast, others drift depending on how close you are. Click anywhere to throw them off before they recover.</p>
+        </details>
+      </div>
 
-      <a class="item" data-sound-hover="hover" data-sound-click="open-project" href="https://mattjss.github.io/flock/" target="_blank">
-        <div class="item-top">
-          <div class="info">
-            <span class="name">Flock</span>
-            <span class="desc">Herd a flock of birds into a target ring. Your cursor scares them.</span>
+      <div class="item-wrap">
+        <a class="item" data-sound-hover="hover" data-sound-click="open-project" href="https://mattjss.github.io/flock/" target="_blank">
+          <div class="item-top">
+            <div class="info">
+              <span class="name">Flock</span>
+              <span class="desc">Herd a flock of birds into a target ring. Your cursor scares them.</span>
+            </div>
+            <div class="right">
+              <span class="tag">canvas · boids · game</span>
+              <span class="arrow">→</span>
+            </div>
           </div>
-          <div class="right">
-            <span class="tag">canvas · boids · game</span>
-            <span class="arrow">→</span>
-          </div>
-        </div>
-        <p class="about">Started as an interaction experiment and turned into a game. Move your cursor toward the birds to scare them and guide the flock into the glowing ring to score. Lose too many off the edge and it's game over — the last visitor's score shows up when you load it.</p>
-      </a>
+        </a>
+        <details class="about-wrap">
+          <summary>about</summary>
+          <p class="about">Started as an interaction experiment and turned into a game. Move your cursor toward the birds to scare them and guide the flock into the glowing ring to score. Lose too many off the edge and it's game over — the last visitor's score shows up when you load it.</p>
+        </details>
+      </div>
 
-      <a class="item" data-sound-hover="hover" data-sound-click="open-project" href="https://mattjss.github.io/cloth/" target="_blank">
-        <div class="item-top">
-          <div class="info">
-            <span class="name">Cloth</span>
-            <span class="desc">A fabric you can push and deform. Click to send a shockwave through the whole surface.</span>
+      <div class="item-wrap">
+        <a class="item" data-sound-hover="hover" data-sound-click="open-project" href="https://mattjss.github.io/cloth/" target="_blank">
+          <div class="item-top">
+            <div class="info">
+              <span class="name">Cloth</span>
+              <span class="desc">A fabric you can push and deform. Click to send a shockwave through the whole surface.</span>
+            </div>
+            <div class="right">
+              <span class="tag">canvas · spring physics</span>
+              <span class="arrow">→</span>
+            </div>
           </div>
-          <div class="right">
-            <span class="tag">canvas · spring physics</span>
-            <span class="arrow">→</span>
-          </div>
-        </div>
-        <p class="about">Move your cursor across the surface and it pushes the fabric out of shape. The threads under the most stress glow brighter as tension builds. Click to shock the whole thing at once and watch it ripple back into place.</p>
-      </a>
+        </a>
+        <details class="about-wrap">
+          <summary>about</summary>
+          <p class="about">Move your cursor across the surface and it pushes the fabric out of shape. The threads under the most stress glow brighter as tension builds. Click to shock the whole thing at once and watch it ripple back into place.</p>
+        </details>
+      </div>
 
-      <a class="item" data-sound-hover="hover" data-sound-click="open-project" href="https://mattjss.github.io/grid/" target="_blank">
-        <div class="item-top">
-          <div class="info">
-            <span class="name">Grid</span>
-            <span class="desc">Tick marks that rotate to follow your cursor. Click fires a wave across the field.</span>
+      <div class="item-wrap">
+        <a class="item" data-sound-hover="hover" data-sound-click="open-project" href="https://mattjss.github.io/grid/" target="_blank">
+          <div class="item-top">
+            <div class="info">
+              <span class="name">Grid</span>
+              <span class="desc">Tick marks that rotate to follow your cursor. Click fires a wave across the field.</span>
+            </div>
+            <div class="right">
+              <span class="tag">canvas · angular spring</span>
+              <span class="arrow">→</span>
+            </div>
           </div>
-          <div class="right">
-            <span class="tag">canvas · angular spring</span>
-            <span class="arrow">→</span>
-          </div>
-        </div>
-        <p class="about">Similar to Vector but with more drag — nearby marks react fast, far ones lag behind, which creates a rolling wave effect just from moving around. Click to send a rotational pulse outward from wherever you land.</p>
-      </a>
+        </a>
+        <details class="about-wrap">
+          <summary>about</summary>
+          <p class="about">Similar to Vector but with more drag — nearby marks react fast, far ones lag behind, which creates a rolling wave effect just from moving around. Click to send a rotational pulse outward from wherever you land.</p>
+        </details>
+      </div>
 
-      <a class="item" data-sound-hover="hover" data-sound-click="open-project" href="https://mattjss.github.io/Spider-Mesh/" target="_blank">
-        <div class="item-top">
-          <div class="info">
-            <span class="name">Spider Mesh</span>
-            <span class="desc">A dot grid that clings to your cursor like a web. Left click fires a ripple, right click changes the color.</span>
+      <div class="item-wrap">
+        <a class="item" data-sound-hover="hover" data-sound-click="open-project" href="https://mattjss.github.io/Spider-Mesh/" target="_blank">
+          <div class="item-top">
+            <div class="info">
+              <span class="name">Spider Mesh</span>
+              <span class="desc">A dot grid that clings to your cursor like a web. Left click fires a ripple, right click changes the color.</span>
+            </div>
+            <div class="right">
+              <span class="tag">canvas · spider mesh · ripple</span>
+              <span class="arrow">→</span>
+            </div>
           </div>
-          <div class="right">
-            <span class="tag">canvas · spider mesh · ripple</span>
-            <span class="arrow">→</span>
-          </div>
-        </div>
-        <p class="about">Move around and the nearest dots stretch toward you, forming a web of legs around your cursor. Left click and a ripple travels outward through the whole grid, displacing everything in its path. Right click to swap colors.</p>
-      </a>
+        </a>
+        <details class="about-wrap">
+          <summary>about</summary>
+          <p class="about">Move around and the nearest dots stretch toward you, forming a web of legs around your cursor. Left click and a ripple travels outward through the whole grid, displacing everything in its path. Right click to swap colors.</p>
+        </details>
+      </div>
 
     </div>
   </main>
