@@ -23,24 +23,31 @@
       letter-spacing: 0.18em; text-transform: uppercase;
       color: rgba(255,255,255,0.75);
     }
-    p { font-size: 11px; color: rgba(255,255,255,0.22); letter-spacing: 0.04em; }
+    .subtitle { font-size: 11px; color: rgba(255,255,255,0.22); letter-spacing: 0.04em; }
     .list { display: flex; flex-direction: column; }
     a.item {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 18px 0;
+      display: flex; flex-direction: column;
+      padding: 20px 0;
       border-bottom: 1px solid rgba(255,255,255,0.06);
       text-decoration: none; color: inherit;
-      transition: opacity 0.15s; gap: 16px;
+      transition: opacity 0.15s;
     }
     a.item:first-child { border-top: 1px solid rgba(255,255,255,0.06); }
     a.item:hover { opacity: 0.6; }
     a.item:active { opacity: 0.35; }
+    .item-top {
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    }
     .info { display: flex; flex-direction: column; gap: 4px; }
     .name { font-size: 13px; color: rgba(255,255,255,0.82); }
     .desc { font-size: 11px; color: rgba(255,255,255,0.26); }
     .right { display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
     .tag { font-size: 10px; letter-spacing: 0.08em; color: rgba(255,255,255,0.13); }
     .arrow { font-size: 11px; color: rgba(255,255,255,0.15); }
+    .about {
+      font-size: 11px; color: rgba(255,255,255,0.20);
+      line-height: 1.7; margin-top: 10px;
+    }
     [data-sound-mute] {
       background: none; border: none; cursor: pointer; padding: 0;
       font-size: 10px; letter-spacing: 0.10em; text-transform: uppercase;
@@ -54,70 +61,95 @@
   <main>
     <header>
       <h1>Lab</h1>
-      <p>Interactive experiments · move + click each to test</p>
+      <p class="subtitle">Interactive experiments · move + click each to test</p>
       <button data-sound-mute="on" aria-label="Mute sounds">sound on</button>
     </header>
     <div class="list">
+
       <a class="item" data-sound-hover="hover" data-sound-click="open-project" href="https://mattjss.github.io/Vector/" target="_blank">
-        <div class="info">
-          <span class="name">Vector</span>
-          <span class="desc">16×16 grid of bars rotate to face your cursor like compass needles — click fires a radial shockwave</span>
+        <div class="item-top">
+          <div class="info">
+            <span class="name">Vector</span>
+            <span class="desc">16×16 grid of bars rotate to face your cursor like compass needles — click fires a radial shockwave</span>
+          </div>
+          <div class="right">
+            <span class="tag">DOM · CSS · angular spring</span>
+            <span class="arrow">→</span>
+          </div>
         </div>
-        <div class="right">
-          <span class="tag">DOM · CSS · angular spring</span>
-          <span class="arrow">→</span>
-        </div>
+        <p class="about">256 DOM bars in a 16×16 grid each independently track your cursor through an angular spring — nearby bars snap toward you with physical weight and overshoot, distant ones follow lazily. The gradient needles grow longer and brighter as the cursor approaches. Click anywhere to fire a radial burst that temporarily scrambles every bar in the field before they recover.</p>
       </a>
+
       <a class="item" data-sound-hover="hover" data-sound-click="open-project" href="https://mattjss.github.io/ripple/" target="_blank">
-        <div class="info">
-          <span class="name">Ripple</span>
-          <span class="desc">20×20 dot grid with spring physics — cursor disturbs the field and click sends a propagating wave</span>
+        <div class="item-top">
+          <div class="info">
+            <span class="name">Ripple</span>
+            <span class="desc">20×20 dot grid with spring physics — cursor disturbs the field and click sends a propagating wave</span>
+          </div>
+          <div class="right">
+            <span class="tag">canvas · spring physics</span>
+            <span class="arrow">→</span>
+          </div>
         </div>
-        <div class="right">
-          <span class="tag">canvas · spring physics</span>
-          <span class="arrow">→</span>
-        </div>
+        <p class="about">A 20×20 dot membrane where each node runs spring physics. Dots shift from deep blue at rest to warm white when displaced — cursor proximity lifts the field into a spreading heat bloom. Click fires a propagating wave that travels outward through the grid; multiple simultaneous waves stack and brighten where they intersect.</p>
       </a>
+
       <a class="item" data-sound-hover="hover" data-sound-click="open-project" href="https://mattjss.github.io/flock/" target="_blank">
-        <div class="info">
-          <span class="name">Flock</span>
-          <span class="desc">A self-organizing murmuration of 150 birds — move near to scatter them, click to explode the flock outward</span>
+        <div class="item-top">
+          <div class="info">
+            <span class="name">Flock</span>
+            <span class="desc">A self-organizing murmuration of 150 birds — move near to scatter them, click to explode the flock outward</span>
+          </div>
+          <div class="right">
+            <span class="tag">canvas · boids · emergence</span>
+            <span class="arrow">→</span>
+          </div>
         </div>
-        <div class="right">
-          <span class="tag">canvas · boids · emergence</span>
-          <span class="arrow">→</span>
-        </div>
+        <p class="about">150 boids each independently apply separation, alignment, and cohesion rules to their local neighbors — producing a self-organizing murmuration with no central control. Color maps flock state: warm orange when agents are scattered, cool teal when moving in tight alignment. Move your cursor near the flock to scatter it; click to explode the entire formation outward.</p>
       </a>
+
       <a class="item" data-sound-hover="hover" data-sound-click="open-project" href="https://mattjss.github.io/cloth/" target="_blank">
-        <div class="info">
-          <span class="name">Cloth</span>
-          <span class="desc">A spring-mesh membrane you can poke — strained connections glow under tension, click ripples through the whole grid</span>
+        <div class="item-top">
+          <div class="info">
+            <span class="name">Cloth</span>
+            <span class="desc">A spring-mesh membrane you can poke — strained connections glow under tension, click ripples through the whole grid</span>
+          </div>
+          <div class="right">
+            <span class="tag">canvas · spring physics</span>
+            <span class="arrow">→</span>
+          </div>
         </div>
-        <div class="right">
-          <span class="tag">canvas · spring physics</span>
-          <span class="arrow">→</span>
-        </div>
+        <p class="about">A 22×22 particle mesh held by structural and shear springs, each node softly anchored to its rest position so the surface deforms under pressure and ripples back. Move the cursor across the mesh to push nodes out of place — connections under strain glow brighter as tension builds. Click to send a shockwave through the entire grid at once.</p>
       </a>
-<a class="item" data-sound-hover="hover" data-sound-click="open-project" href="https://mattjss.github.io/grid/" target="_blank">
-        <div class="info">
-          <span class="name">Grid</span>
-          <span class="desc">26×26 tick marks rotate in unison to face your cursor — click fires a rotational shockwave across the field</span>
+
+      <a class="item" data-sound-hover="hover" data-sound-click="open-project" href="https://mattjss.github.io/grid/" target="_blank">
+        <div class="item-top">
+          <div class="info">
+            <span class="name">Grid</span>
+            <span class="desc">26×26 tick marks rotate in unison to face your cursor — click fires a rotational shockwave across the field</span>
+          </div>
+          <div class="right">
+            <span class="tag">canvas · angular spring</span>
+            <span class="arrow">→</span>
+          </div>
         </div>
-        <div class="right">
-          <span class="tag">canvas · angular spring</span>
-          <span class="arrow">→</span>
-        </div>
+        <p class="about">26×26 canvas tick marks, each a damped angular pendulum tracking your cursor. Nearby marks react quickly with high amplitude; distant ones lag — creating a rolling wave of orientation that follows every move. Click fires a staggered rotational impulse that radiates outward from the impact point, temporarily overriding the cursor pull.</p>
       </a>
+
       <a class="item" data-sound-hover="hover" data-sound-click="open-project" href="https://mattjss.github.io/flow/" target="_blank">
-        <div class="info">
-          <span class="name">Flow</span>
-          <span class="desc">30×30 vector field animates through a curl pattern — cursor creates a live vortex, click sends a ripple</span>
+        <div class="item-top">
+          <div class="info">
+            <span class="name">Flow</span>
+            <span class="desc">30×30 vector field animates through a curl pattern — cursor creates a live vortex, click sends a ripple</span>
+          </div>
+          <div class="right">
+            <span class="tag">canvas · vector field</span>
+            <span class="arrow">→</span>
+          </div>
         </div>
-        <div class="right">
-          <span class="tag">canvas · vector field</span>
-          <span class="arrow">→</span>
-        </div>
+        <p class="about">A 30×30 vector field evolving through a continuously shifting curl noise pattern. When your cursor enters, a live vortex warps the surrounding arrows into orbital alignment around you. Particles spawn at the cursor and trace real-time paths through the live field. Click to radiate a ring distortion outward that bends the entire field as it passes.</p>
       </a>
+
     </div>
   </main>
   <script src="sound.js"></script>
