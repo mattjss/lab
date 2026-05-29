@@ -53,7 +53,7 @@
     .tag { font-size: 10px; letter-spacing: 0.08em; color: rgba(255,255,255,0.13); }
     .arrow { font-size: 11px; color: rgba(255,255,255,0.15); }
 
-    details.about-wrap { padding-bottom: 16px; }
+    details.about-wrap { display: none; }
     details.about-wrap summary {
       list-style: none;
       display: inline-flex; align-items: center; gap: 5px;
@@ -305,6 +305,21 @@
           <summary>about</summary>
           <p class="about">Tab bars are deceptively hard to get right — the indicator needs to feel like it has weight, the content transitions need to feel like pages, not fades. These are a set of explorations on getting that feeling exactly right.</p>
         </details>
+      </div>
+
+      <div class="item-wrap">
+        <a class="item" data-sound-hover="hover" data-sound-click="open-project" href="https://mattjss.github.io/terminal/" target="_blank">
+          <div class="item-top">
+            <div class="info">
+              <span class="name">Terminal</span>
+              <span class="desc">A minimal terminal UI that types out AI-style log output in real time. A monospace aesthetic with toggle-controlled stream.</span>
+            </div>
+            <div class="right">
+              <span class="tag">canvas · monospace · animation</span>
+              <span class="arrow">→</span>
+            </div>
+          </div>
+        </a>
       </div>
     </div>
   </main>
