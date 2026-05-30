@@ -1,4 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>lab</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { background: #101010; }
+    body {
+      width: 100%; min-height: 100%;
+      background: #101010;
+      color: #fafafa;
+      display: flex; flex-direction: column; align-items: center;
+      overflow-y: auto;
+      font-family: system-ui, -apple-system, sans-serif;
+      padding: 48px 24px;
+    }
+    main {
+      display: flex; flex-direction: column; gap: 40px;
+      max-width: 600px; width: 100%;
+    }
+    header { display: flex; flex-direction: column; gap: 6px; }
+    h1 {
+      font-size: 11px; font-weight: 500;
+      letter-spacing: 0.18em; text-transform: uppercase;
+      color: rgba(255,255,255,0.75);
+    }
+    .subtitle { font-size: 11px; color: rgba(255,255,255,0.22); letter-spacing: 0.04em; }
+    .list { display: flex; flex-direction: column; }
 
+    .item-wrap {
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .item-wrap:first-child { border-top: 1px solid rgba(255,255,255,0.06); }
+
+    a.item {
+      display: flex; flex-direction: column;
+      padding: 20px 0 16px;
+      text-decoration: none; color: inherit;
+      transition: opacity 0.15s;
+    }
+    a.item:hover { opacity: 0.6; }
+    a.item:active { opacity: 0.35; }
+
+    .item-top {
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    }
+    .info { display: flex; flex-direction: column; gap: 4px; }
+    .name { font-size: 13px; color: rgba(255,255,255,0.82); }
+    .desc { font-size: 11px; color: rgba(255,255,255,0.26); }
+    .right { display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
+    .tag { font-size: 10px; letter-spacing: 0.08em; color: rgba(255,255,255,0.13); }
+    .arrow { font-size: 11px; color: rgba(255,255,255,0.15); }
+
+    .item-actions {
+      display: flex; align-items: center; gap: 12px;
+      padding-bottom: 14px;
+    }
+    a.download-btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+      color: rgba(255,255,255,0.18);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    a.download-btn:hover { color: rgba(255,255,255,0.55); }
+    a.download-btn svg { width: 11px; height: 11px; flex-shrink: 0; }
+
+    details.about-wrap { display: none; }
+    details.about-wrap summary {
+      list-style: none;
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 10px; letter-spacing: 0.10em; text-transform: uppercase;
+      color: rgba(255,255,255,0.18);
+      cursor: pointer;
+      user-select: none;
+      transition: color 0.15s;
+    }
+    details.about-wrap summary::-webkit-details-marker { display: none; }
+    details.about-wrap summary::after {
+      content: '↓';
+      font-size: 9px;
+      transition: transform 0.2s;
+      display: inline-block;
+    }
+    details.about-wrap[open] summary::after { transform: rotate(180deg); }
+    details.about-wrap summary:hover { color: rgba(255,255,255,0.45); }
+
+    .about {
+      font-size: 11px; color: rgba(255,255,255,0.20);
+      line-height: 1.7; margin-top: 10px;
+      user-select: text;
+    }
+
+    [data-sound-mute] {
+      background: none; border: none; cursor: pointer; padding: 0;
+      font-size: 10px; letter-spacing: 0.10em; text-transform: uppercase;
+      color: rgba(255,255,255,0.18); font-family: inherit;
+      transition: color 0.15s;
+    }
+    [data-sound-mute]:hover { color: rgba(255,255,255,0.45); }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Lab</h1>
+      <p class="subtitle">Interactive experiments · move + click each to test</p>
+      <button data-sound-mute="on" aria-label="Mute sounds">sound on</button>
+    </header>
+    <div class="list">
+
+      <div class="item-wrap">
+        <a class="item" data-sound-hover="hover" data-sound-click="open-project" href="https://mattjss.github.io/Vector/" target="_blank">
+          <div class="item-top">
+            <div class="info">
+              <span class="name">Vector</span>
+              <span class="desc">A 16×16 grid of bars that rotate in unison to face your cursor like compass needles. Click fires a rotational shockwave that ripples across the field.</span>
+            </div>
+            <div class="right">
+              <span class="tag">DOM · CSS · angular spring</span>
+              <span class="arrow">→</span>
+            </div>
+          </div>
+        </a>
+        <div class="item-actions">
+          <a class="download-btn" href="https://github.com/mattjss/Vector/archive/refs/heads/main.zip" download><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1v7M3.5 5.5L6 8l2.5-2.5"/><path d="M1.5 10.5h9"/></svg>code</a>
+        </div>
+        <details class="about-wrap">
+          <summary>about</summary>
+          <p class="about">Curious what would happen if every element on screen reacted to your cursor at once. Move around and they all follow — some snap fast, others drift depending on how close you are. Click anywhere to throw them off before they recover.</p>
+        </details>
+      </div>
+
+      <div class="item-wrap">
+        <a class="item" data-sound-hover="hover" data-sound-click="open-project" href="https://mattjss.github.io/flock/" target="_blank">
+          <div class="item-top">
+            <div class="info">
+              <span class="name">Flock</span>
+              <span class="desc">Herd a flock of birds into a target ring. Your cursor scares them.</span>
+            </div>
+            <div class="right">
+              <span class="tag">canvas · boids · game</span>
+              <span class="arrow">→</span>
+            </div>
+          </div>
+        </a>
+        <div class="item-actions">
+          <a class="download-btn" href="https://github.com/mattjss/flock/archive/refs/heads/main.zip" download><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1v7M3.5 5.5L6 8l2.5-2.5"/><path d="M1.5 10.5h9"/></svg>code</a>
+        </div>
+        <details class="about-wrap">
+          <summary>about</summary>
+          <p class="about">Started as an interaction experiment and turned into a game. Move your cursor toward the birds to scare them and guide the flock into the glowing ring to score. Lose too many off the edge and it's game over — the last visitor's score shows up when you load it.</p>
+        </details>
+      </div>
+
+      <div class="item-wrap">
+        <a class="item" data-sound-hover="hover" data-sound-click="open-project" href="https://mattjss.github.io/cloth/" target="_blank">
+          <div class="item-top">
+            <div class="info">
+              <span class="name">Cloth</span>
+              <span class="desc">Move your cursor across the surface. The threads under the most stress glow brighter as tension builds. Click to send a pulse wave and watch it ripple back into place.</span>
+            </div>
+            <div class="right">
+              <span class="tag">canvas · spring physics</span>
+              <span class="arrow">→</span>
+            </div>
+          </div>
+        </a>
+        <div class="item-actions">
+          <a class="download-btn" href="https://github.com/mattjss/cloth/archive/refs/heads/main.zip" download><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1v7M3.5 5.5L6 8l2.5-2.5"/><path d="M1.5 10.5h9"/></svg>code</a>
+        </div>
+        <details class="about-wrap">
+          <summary>about</summary>
+          <p class="about">Move your cursor across the surface and it pushes the fabric out of shape. The threads under the most stress glow brighter as tension builds. Click to shock the whole thing at once and watch it ripple back into place.</p>
+        </details>
+      </div>
+
+      <div class="item-wrap">
+        <a class="item" data-sound-hover="hover" data-sound-click="open-project" href="https://mattjss.github.io/grid/" target="_blank">
+          <div class="item-top">
+            <div class="info">
+              <span class="name">Grid</span>
+              <span class="desc">Tick marks that rotate to follow your cursor. Click fires a wave across the field.</span>
+            </div>
+            <div class="right">
+              <span class="tag">canvas · angular spring</span>
+              <span class="arrow">→</span>
+            </div>
+          </div>
+        </a>
+        <div class="item-actions">
+          <a class="download-btn" href="https://github.com/mattjss/grid/archive/refs/heads/main.zip" download><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1v7M3.5 5.5L6 8l2.5-2.5"/><path d="M1.5 10.5h9"/></svg>code</a>
+        </div>
+        <details class="about-wrap">
+          <summary>about</summary>
+          <p class="about">Similar to Vector but with more drag — nearby marks react fast, far ones lag behind, which creates a rolling wave effect just from moving around. Click to send a rotational pulse outward from wherever you land.</p>
+        </details>
+      </div>
+
+      <div class="item-wrap">
+        <a class="item" data-sound-hover="hover" data-sound-click="open-project" href="https://mattjss.github.io/Spider-Mesh/" target="_blank">
+          <div class="item-top">
+            <div class="info">
+              <span class="name">Spider Mesh</span>
+              <span class="desc">A dot grid that clings to your cursor like a web. Left click fires a ripple, right click changes the color.</span>
+            </div>
+            <div class="right">
+              <span class="tag">canvas · spider mesh · ripple</span>
+              <span class="arrow">→</span>
+            </div>
+          </div>
+        </a>
+        <div class="item-actions">
+          <a class="download-btn" href="https://github.com/mattjss/Spider-Mesh/archive/refs/heads/main.zip" download><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1v7M3.5 5.5L6 8l2.5-2.5"/><path d="M1.5 10.5h9"/></svg>code</a>
+        </div>
+        <details class="about-wrap">
+          <summary>about</summary>
+          <p class="about">Move around and the nearest dots stretch toward you, forming a web of legs around your cursor. Left click and a ripple travels outward through the whole grid, displacing everything in its path. Right click to swap colors.</p>
+        </details>
+      </div>
+
+      <div class="item-wrap">
+        <a class="item" data-sound-hover="hover" data-sound-click="open-project" href="https://mattjss.github.io/Agentic-Animations-2/" target="_blank">
+          <div class="item-top">
+            <div class="info">
+              <span class="name">Agentic Animations 2</span>
+              <span class="desc">A growing library of loading state animations built for agentic UI. Prototyping motion patterns for AI-driven interfaces.</span>
+            </div>
+            <div class="right">
+              <span class="tag">React · Tailwind · motion</span>
+              <span class="arrow">→</span>
+            </div>
+          </div>
+        </a>
+        <div class="item-actions">
+          <a class="download-btn" href="https://github.com/mattjss/Agentic-Animations-2/archive/refs/heads/main.zip" download><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1v7M3.5 5.5L6 8l2.5-2.5"/><path d="M1.5 10.5h9"/></svg>code</a>
+        </div>
+        <details class="about-wrap">
+          <summary>about</summary>
+          <p class="about">Second volume of agentic animation explorations — expanding the library of loading states, transitions, and feedback patterns designed specifically for AI interfaces where state is uncertain and progress is non-linear.</p>
+        </details>
+      </div>
+
+      <div class="item-wrap">
+        <a class="item" data-sound-hover="hover" data-sound-click="open-project" href="https://mattjss.github.io/Save-Button/" target="_blank">
+          <div class="item-top">
+            <div class="info">
+              <span class="name">Save Button</span>
+              <span class="desc">A save button with layered micro-interaction states — idle, loading, and confirmed. Each transition is physically grounded.</span>
+            </div>
+            <div class="right">
+              <span class="tag">React · Tailwind · micro-interaction</span>
+              <span class="arrow">→</span>
+            </div>
+          </div>
+        </a>
+        <div class="item-actions">
+          <a class="download-btn" href="https://github.com/mattjss/Save-Button/archive/refs/heads/main.zip" download><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1v7M3.5 5.5L6 8l2.5-2.5"/><path d="M1.5 10.5h9"/></svg>code</a>
+        </div>
+        <details class="about-wrap">
+          <summary>about</summary>
+          <p class="about">Exploring how much personality you can pack into a single button. The goal was to make every state feel distinct — not just a color change, but a physical sense of weight and confirmation that something actually happened.</p>
+        </details>
+      </div>
+
+      <div class="item-wrap">
+        <a class="item" data-sound-hover="hover" data-sound-click="open-project" href="https://mattjss.github.io/Matrix-Loader/" target="_blank">
+          <div class="item-top">
+            <div class="info">
+              <span class="name">Matrix Loader</span>
+              <span class="desc">A terminal-style AI agent workflow animation. Simulates real agentic process output — context retrieval, planning, execution — in JetBrains Mono.</span>
+            </div>
+            <div class="right">
+              <span class="tag">React · monospace · agentic UI</span>
+              <span class="arrow">→</span>
+            </div>
+          </div>
+        </a>
+        <div class="item-actions">
+          <a class="download-btn" href="https://github.com/mattjss/Matrix-Loader/archive/refs/heads/main.zip" download><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1v7M3.5 5.5L6 8l2.5-2.5"/><path d="M1.5 10.5h9"/></svg>code</a>
+        </div>
+        <details class="about-wrap">
+          <summary>about</summary>
+          <p class="about">A remix and study of Tom Johnson's matrix loader — breaking down the technique and rebuilding it to understand how the depth and timing work. The result ended up going in a slightly different direction.</p>
+        </details>
+      </div>
+
+      <div class="item-wrap">
+        <a class="item" data-sound-hover="hover" data-sound-click="open-project" href="https://mattjss.github.io/Logo-Carousel/" target="_blank">
+          <div class="item-top">
+            <div class="info">
+              <span class="name">Logo Carousel</span>
+              <span class="desc">A seamlessly looping logo carousel with edge fades. Inspired by Rauno Freiberg's marquee work.</span>
+            </div>
+            <div class="right">
+              <span class="tag">React · CSS · marquee</span>
+              <span class="arrow">→</span>
+            </div>
+          </div>
+        </a>
+        <div class="item-actions">
+          <a class="download-btn" href="https://github.com/mattjss/Logo-Carousel/archive/refs/heads/main.zip" download><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1v7M3.5 5.5L6 8l2.5-2.5"/><path d="M1.5 10.5h9"/></svg>code</a>
+        </div>
+        <details class="about-wrap">
+          <summary>about</summary>
+          <p class="about">Studying the detail work in Rauno Freiberg's marquee implementations — the edge masking, the loop timing, the way it feels effortless. Rebuilt it to internalize the technique.</p>
+        </details>
+      </div>
+
+      <div class="item-wrap">
+        <a class="item" data-sound-hover="hover" data-sound-click="open-project" href="https://mattjss.github.io/Sync/" target="_blank">
+          <div class="item-top">
+            <div class="info">
+              <span class="name">Sync</span>
+              <span class="desc">Interaction design for an AI calendar sync interface. Explores how to communicate background AI activity clearly.</span>
+            </div>
+            <div class="right">
+              <span class="tag">React · AI UI · calendar</span>
+              <span class="arrow">→</span>
+            </div>
+          </div>
+        </a>
+        <div class="item-actions">
+          <a class="download-btn" href="https://github.com/mattjss/Sync/archive/refs/heads/main.zip" download><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1v7M3.5 5.5L6 8l2.5-2.5"/><path d="M1.5 10.5h9"/></svg>code</a>
+        </div>
+        <details class="about-wrap">
+          <summary>about</summary>
+          <p class="about">Thinking through the interaction design problem of an AI that's always working in the background — how do you show that without it being annoying, and how does the UI communicate trust when the agent is making decisions for you.</p>
+        </details>
+      </div>
+
+      <div class="item-wrap">
+        <a class="item" data-sound-hover="hover" data-sound-click="open-project" href="https://mattjss.github.io/Tabs/" target="_blank">
+          <div class="item-top">
+            <div class="info">
+              <span class="name">Tabs</span>
+              <span class="desc">High-fidelity tab bar animation experiments. Built with Figma MCP and Cursor, focused on the physics of switching.</span>
+            </div>
+            <div class="right">
+              <span class="tag">React · Tailwind · tab animation</span>
+              <span class="arrow">→</span>
+            </div>
+          </div>
+        </a>
+        <div class="item-actions">
+          <a class="download-btn" href="https://github.com/mattjss/Tabs/archive/refs/heads/main.zip" download><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1v7M3.5 5.5L6 8l2.5-2.5"/><path d="M1.5 10.5h9"/></svg>code</a>
+        </div>
+        <details class="about-wrap">
+          <summary>about</summary>
+          <p class="about">Tab bars are deceptively hard to get right — the indicator needs to feel like it has weight, the content transitions need to feel like pages, not fades. These are a set of explorations on getting that feeling exactly right.</p>
+        </details>
+      </div>
+
+      <div class="item-wrap">
+        <a class="item" data-sound-hover="hover" data-sound-click="open-project" href="https://mattjss.github.io/terminal/" target="_blank">
+          <div class="item-top">
+            <div class="info">
+              <span class="name">Terminal</span>
+              <span class="desc">A minimal terminal UI that types out AI-style log output in real time. A monospace aesthetic with toggle-controlled stream.</span>
+            </div>
+            <div class="right">
+              <span class="tag">canvas · monospace · animation</span>
+              <span class="arrow">→</span>
+            </div>
+          </div>
+        </a>
+        <div class="item-actions">
+          <a class="download-btn" href="https://github.com/mattjss/terminal/archive/refs/heads/main.zip" download><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1v7M3.5 5.5L6 8l2.5-2.5"/><path d="M1.5 10.5h9"/></svg>code</a>
+        </div>
+      </div>
 
       <div class="item-wrap">
         <a class="item" data-sound-hover="hover" data-sound-click="open-project" href="https://mattjss.github.io/AI-Orb/" target="_blank">
@@ -17,3 +388,9 @@
           <a class="download-btn" href="https://github.com/mattjss/AI-Orb/archive/refs/heads/main.zip" download><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 1v7M3.5 5.5L6 8l2.5-2.5"/><path d="M1.5 10.5h9"/></svg>code</a>
         </div>
       </div>
+
+    </div>
+  </main>
+  <script src="sound.js"></script>
+</body>
+</html>
